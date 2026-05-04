@@ -69,7 +69,32 @@
       "Bash(xargs -I{} taskkill //F //PID {})",
       "Bash(findstr \":3000\")",
       "Bash(findstr LISTENING)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git branch *)",
+      "Bash(git push *)",
+      "Bash(vercel --version)",
+      "Bash(vercel --yes --name rogveda-backend)",
+      "Bash(vercel --yes --name rogveda-admin)",
+      "Read(//c/Users/ap154/**)",
+      "PowerShell(Get-Content \"$env:APPDATA\\\\com.vercel.cli\\\\Data\\\\auth.json\")",
+      "Bash(curl -s 'https://api.vercel.com/v9/projects?teamId=aditya-pratap-singhs-projects-58118e66&limit=20' -H 'Authorization: Bearer vca_7g6sPupN5zRmyCWVM3RD8AOfKbs6KY20MyBsuUh2e751p5CasD0GhShn')",
+      "Bash(python3 -c ' *)",
+      "Bash(curl -s 'https://api.vercel.com/v9/projects/prj_gd7Y8OB4gNTOwVoIugpOlbjrNAJj?teamId=aditya-pratap-singhs-projects-58118e66' -H 'Authorization: Bearer vca_7g6sPupN5zRmyCWVM3RD8AOfKbs6KY20MyBsuUh2e751p5CasD0GhShn')",
+      "Bash(curl -s 'https://api.vercel.com/v6/deployments?teamId=aditya-pratap-singhs-projects-58118e66&projectId=prj_gd7Y8OB4gNTOwVoIugpOlbjrNAJj&limit=1' -H 'Authorization: Bearer vca_7g6sPupN5zRmyCWVM3RD8AOfKbs6KY20MyBsuUh2e751p5CasD0GhShn')",
+      "Bash(curl -sv https://rogveda-backend.vercel.app/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"admin@rogveda.com\",\"password\":\"test\"}')",
+      "Bash(curl -s 'https://api.vercel.com/v9/projects/prj_gd7Y8OB4gNTOwVoIugpOlbjrNAJj/env?teamId=aditya-pratap-singhs-projects-58118e66' -H 'Authorization: Bearer vca_7g6sPupN5zRmyCWVM3RD8AOfKbs6KY20MyBsuUh2e751p5CasD0GhShn')",
+      "Bash(curl -s 'https://api.vercel.com/v2/deployments/dpl_2cqWjBngmkuDHEi2bdGd3EyC7Uq9/events?teamId=aditya-pratap-singhs-projects-58118e66&types=stderr,stdout,exit' -H 'Authorization: Bearer vca_7g6sPupN5zRmyCWVM3RD8AOfKbs6KY20MyBsuUh2e751p5CasD0GhShn')",
+      "Bash(curl -sv \"https://rogveda-backend.vercel.app/health\")",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(list\\(d.get\\('dependencies',{}\\).keys\\(\\)\\)\\)\")",
+      "Bash(curl -s 'https://api.vercel.com/v2/projects/prj_gd7Y8OB4gNTOwVoIugpOlbjrNAJj/deployments?teamId=aditya-pratap-singhs-projects-58118e66&limit=3' -H 'Authorization: Bearer vca_7g6sPupN5zRmyCWVM3RD8AOfKbs6KY20MyBsuUh2e751p5CasD0GhShn')",
+      "Bash(curl -s 'https://api.vercel.com/v6/deployments?teamId=aditya-pratap-singhs-projects-58118e66&projectId=prj_gd7Y8OB4gNTOwVoIugpOlbjrNAJj&limit=3' -H 'Authorization: Bearer vca_7g6sPupN5zRmyCWVM3RD8AOfKbs6KY20MyBsuUh2e751p5CasD0GhShn')",
+      "Bash(node --check src/server.js)",
+      "Bash(node -e \"require\\('./src/server.js'\\)\")",
+      "Bash(curl -s \"https://rogveda-backend.vercel.app/health\")",
+      "Bash(curl -s 'https://api.vercel.com/v1/projects/prj_gd7Y8OB4gNTOwVoIugpOlbjrNAJj/observability/log-drains?teamId=aditya-pratap-singhs-projects-58118e66' -H 'Authorization: Bearer vca_7g6sPupN5zRmyCWVM3RD8AOfKbs6KY20MyBsuUh2e751p5CasD0GhShn')",
+      "Bash(vercel --prod --yes)",
+      "Bash(curl -s -X POST https://rogveda-backend.vercel.app/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"admin@rogveda.com\",\"password\":\"Admin@123\"}')"
     ]
   }
 }

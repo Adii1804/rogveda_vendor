@@ -4,7 +4,7 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const env = require('./config/env');
 const pool = require('./db/pool');
-const { error } = require('./utils/response');
+const { error: errorFn } = require('./utils/response');
 
 const authRoutes = require('./modules/auth/auth.routes');
 const adminRoutes = require('./modules/admin/admin.routes');
@@ -51,12 +51,12 @@ app.use('/vendor', vendorRoutes);
 app.use('/admin', adminRoutes);
 
 app.use((req, res) => {
-    error(res, 'Route not found', 404);
+    errorFn(res, 'Route not found', 404);
 });
 
 app.use((err, req, res, next) => {
     console.error(err);
-    error(res, 'Internal server error', 500);
+    errorFn(res, 'Internal server error', 500);
 });
 
 // Start server only when run directly (not when imported by Vercel serverless)

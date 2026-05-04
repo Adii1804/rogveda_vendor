@@ -4,8 +4,9 @@ const required = ['DATABASE_URL', 'JWT_SECRET', 'SUPABASE_URL', 'SUPABASE_SERVIC
 
 for (const key of required) {
     if (!process.env[key]) {
-        console.error(`Missing required environment variable: ${key}`);
-        process.exit(1);
+        console.error(`[env] Missing required environment variable: ${key}`);
+        // Don't call process.exit() — it kills Vercel serverless functions.
+        // The app will fail loudly on first use instead.
     }
 }
 
