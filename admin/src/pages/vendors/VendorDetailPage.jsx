@@ -242,19 +242,50 @@ export default function VendorDetailPage() {
                     </CardBody>
                 </Card>
 
-                {/* Profile info */}
-                {vendor.profile && (
+                {/* Profile Details */}
+                {(vendor.description || vendor.full_address || vendor.contact_email || vendor.website_url || vendor.facility_photo_previews?.length) && (
                     <Card>
                         <CardHeader>
-                            <h2 className="text-sm font-semibold text-gray-900">Profile</h2>
+                            <h2 className="text-sm font-semibold text-gray-900">Profile Details</h2>
                         </CardHeader>
                         <CardBody>
-                            <InfoRow label="Facility Name" value={vendor.profile.facility_name} />
-                            <InfoRow label="City" value={vendor.profile.city} />
-                            <InfoRow label="State" value={vendor.profile.state} />
-                            <InfoRow label="Country" value={vendor.profile.country} />
-                            <InfoRow label="Website" value={vendor.profile.website} />
-                            <InfoRow label="Accreditations" value={vendor.profile.accreditations} />
+                            <InfoRow label="Facility Name" value={vendor.facility_name} />
+                            <InfoRow label="City" value={vendor.city} />
+                            {vendor.full_address && <InfoRow label="Full Address" value={vendor.full_address} />}
+                            {vendor.contact_email && <InfoRow label="Contact Email" value={vendor.contact_email} />}
+                            {vendor.contact_mobile && <InfoRow label="Contact Mobile" value={vendor.contact_mobile} />}
+                            {vendor.website_url && (
+                                <InfoRow
+                                    label="Website"
+                                    value={
+                                        <a href={vendor.website_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
+                                            {vendor.website_url} <ExternalLink className="h-3 w-3 inline" />
+                                        </a>
+                                    }
+                                />
+                            )}
+                            {vendor.description && (
+                                <div className="py-2 border-b border-gray-100 last:border-0">
+                                    <span className="text-sm text-gray-500">About / Description</span>
+                                    <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">{vendor.description}</p>
+                                </div>
+                            )}
+                            {vendor.facility_photo_previews?.length > 0 && (
+                                <div className="pt-3">
+                                    <p className="text-sm text-gray-500 mb-2">Facility Photos</p>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                        {vendor.facility_photo_previews.map((url, i) => (
+                                            <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                                                <img
+                                                    src={url}
+                                                    alt={`Facility photo ${i + 1}`}
+                                                    className="w-full h-36 object-cover rounded-lg border border-gray-200 hover:opacity-90 transition-opacity"
+                                                />
+                                            </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </CardBody>
                     </Card>
                 )}

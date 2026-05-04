@@ -1,4 +1,5 @@
 const pool = require('../../../db/pool');
+const { getSignedUrl } = require('../../../utils/storage');
 
 const createVendorAccount = async ({
     email,
@@ -152,7 +153,31 @@ const getVendorById = async (id) => {
         [id]
     );
 
-    return { ...rows[0], kyc_documents: docs };
+    const vendor = rows[0];
+
+    // Generate signed URLs for facility photos
+    let facility_photo_previews = [];
+    if (vendor.facility_photo_urls?.length) {
+        facility_photo_previews = await Promise.all(
+            vendor.facility_photo_urls.map((path) =>
+                getSignedUrl(path, 3600).catch(() => null)
+            )
+        );
+        facility_photo_previews = facility_photo_previews.filter(Boolean);
+    }
+
+    // Generate signed URLs for KYC documents
+    const docsWithUrls = await Promise.all(
+        docs.map(async (doc) => {
+            let signed_url = null;
+            if (doc.storage_path) {
+                signed_url = await getSignedUrl(doc.storage_path, 3600).catch(() => null);
+            }
+            return { ...doc, signed_url };
+        })
+    );
+
+    return { ...vendor, facility_photo_previews, kyc_documents: docsWithUrls };
 };
 
 module.exports = { createVendorAccount, getVendors, getVendorById };
