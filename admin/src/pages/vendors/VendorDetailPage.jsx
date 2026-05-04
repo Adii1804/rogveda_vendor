@@ -28,27 +28,74 @@ function InfoRow({ label, value }) {
 }
 
 function KycDocumentRow({ doc }) {
+    const [expanded, setExpanded] = useState(false);
+    const isImage = doc.mime_type?.startsWith('image/');
+    const isPdf = doc.mime_type === 'application/pdf';
+
     return (
-        <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-            <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900">{doc.document_name}</p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                    {doc.renewal_date ? `Expires ${formatDate(doc.renewal_date)}` : 'No expiry'}
-                </p>
+        <div className="py-3 border-b border-gray-100 last:border-0">
+            <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">{doc.document_name}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                        {doc.renewal_date ? `Expires ${formatDate(doc.renewal_date)}` : 'No expiry'}
+                        {doc.original_file_name && (
+                            <span className="ml-2 text-gray-300">· {doc.original_file_name}</span>
+                        )}
+                    </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 ml-3">
+                    <Badge status={doc.status} />
+                    {doc.signed_url && (
+                        <>
+                            <button
+                                onClick={() => setExpanded((v) => !v)}
+                                className="text-xs text-blue-600 hover:text-blue-800 underline underline-offset-2"
+                            >
+                                {expanded ? 'Hide' : 'View'}
+                            </button>
+                            <a
+                                href={doc.signed_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-gray-400 hover:text-gray-700"
+                                title="Open in new tab"
+                            >
+                                <ExternalLink className="h-4 w-4" />
+                            </a>
+                        </>
+                    )}
+                </div>
             </div>
-            <div className="flex items-center gap-3">
-                <Badge status={doc.status} />
-                {doc.signed_url && (
-                    <a
-                        href={doc.signed_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800"
-                    >
-                        <ExternalLink className="h-4 w-4" />
-                    </a>
-                )}
-            </div>
+
+            {/* Inline preview */}
+            {expanded && doc.signed_url && (
+                <div className="mt-3">
+                    {isImage ? (
+                        <img
+                            src={doc.signed_url}
+                            alt={doc.document_name}
+                            className="max-h-80 rounded-lg border border-gray-200 object-contain bg-gray-50"
+                        />
+                    ) : isPdf ? (
+                        <iframe
+                            src={doc.signed_url}
+                            title={doc.document_name}
+                            className="w-full h-96 rounded-lg border border-gray-200"
+                        />
+                    ) : (
+                        <a
+                            href={doc.signed_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                        >
+                            <ExternalLink className="h-4 w-4" />
+                            Open file
+                        </a>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
