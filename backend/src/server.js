@@ -42,7 +42,7 @@ app.get('/health', async (req, res) => {
         res.json({ success: true, data: { status: 'ok', db: 'connected' } });
     } catch (err) {
         console.error('[health] DB error:', err.message);
-        res.status(503).json({ success: false, error: 'Database unavailable', detail: err.message });
+        res.status(503).json({ success: false, error: 'Database unavailable' });
     }
 });
 
