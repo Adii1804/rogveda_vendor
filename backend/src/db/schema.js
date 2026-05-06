@@ -97,6 +97,7 @@ const vendorLeads = pgTable('vendor_leads', {
     id: uuid('id').defaultRandom().primaryKey(),
     refNo: serial('ref_no'),
     email: varchar('email', { length: 255 }).notNull(),
+    phoneNumber: varchar('phone_number', { length: 20 }),
     emailVerified: boolean('email_verified').default(false),
     status: varchar('status', { length: 30 }).default('new'),
     notes: text('notes'),

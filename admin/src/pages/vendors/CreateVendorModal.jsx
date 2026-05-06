@@ -81,12 +81,17 @@ export function CreateVendorModal({ open, onClose }) {
         if (!leadId) {
             setValue('lead_id', '', { shouldValidate: false });
             setValue('email', '', { shouldValidate: false });
+            setValue('mobile_number', '', { shouldValidate: false });
             return;
         }
         const lead = eligibleLeads.find((l) => l.id === leadId);
         if (lead) {
             setValue('lead_id', lead.id, { shouldValidate: false });
             setValue('email', lead.email, { shouldValidate: true });
+            // Pre-fill mobile number from lead's phone if available
+            if (lead.phone_number) {
+                setValue('mobile_number', lead.phone_number, { shouldValidate: true });
+            }
         }
     };
 

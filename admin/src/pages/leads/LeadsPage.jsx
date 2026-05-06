@@ -97,6 +97,7 @@ export default function LeadsPage() {
                             <tr>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide w-16">#</th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Email</th>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Phone</th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Duplicate</th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Submitted</th>
@@ -105,7 +106,7 @@ export default function LeadsPage() {
                         <tbody className="divide-y divide-gray-100">
                             {leads.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="py-12 text-center text-sm text-gray-400">
+                                    <td colSpan={6} className="py-12 text-center text-sm text-gray-400">
                                         No leads found
                                     </td>
                                 </tr>
@@ -127,6 +128,9 @@ export default function LeadsPage() {
                                                     Callback: {formatDateTime(lead.callback_reminder_at)}
                                                 </p>
                                             )}
+                                        </td>
+                                        <td className="px-4 py-3 text-sm text-gray-700 font-mono">
+                                            {lead.phone_number || <span className="text-gray-400">—</span>}
                                         </td>
                                         <td className="px-4 py-3">
                                             <Badge status={lead.status} />

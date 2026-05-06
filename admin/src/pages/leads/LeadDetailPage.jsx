@@ -165,6 +165,7 @@ function LeadDetailContent({ id }) {
                     </CardHeader>
                     <CardBody>
                         <InfoRow label="Email" value={lead.email} />
+                        <InfoRow label="Phone" value={lead.phone_number} />
                         <InfoRow
                             label="Email Verified"
                             value={lead.email_verified ? '✓ Yes' : '✗ No'}

@@ -88,6 +88,7 @@ function JoinForm({ onBack }) {
     const { toast } = useToast();
     const [step, setStep] = useState(1);
     const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
     const [otp, setOtp] = useState('');
     const [cooldown, setCooldown] = useState(0);
 
@@ -109,7 +110,7 @@ function JoinForm({ onBack }) {
     });
 
     const verifyMut = useMutation({
-        mutationFn: () => verifyLeadOtp(email.trim().toLowerCase(), otp),
+        mutationFn: () => verifyLeadOtp(email.trim().toLowerCase(), otp, phone.trim()),
         onSuccess: () => { setStep(3); },
         onError: (e) => toast(e.response?.data?.error || 'Invalid OTP', 'error'),
     });
@@ -121,6 +122,7 @@ function JoinForm({ onBack }) {
     });
 
     const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+    const phoneValid = /^\d{10}$/.test(phone.trim());
 
     if (step === 3) {
         return (
@@ -153,7 +155,7 @@ function JoinForm({ onBack }) {
             {step === 1 && (
                 <>
                     <p className="text-sm text-gray-600">
-                        Enter your work email. We'll send a one-time code to verify it and register your interest.
+                        Enter your details below. We'll send a one-time code to verify your email.
                     </p>
                     <Input
                         type="email"
@@ -162,12 +164,22 @@ function JoinForm({ onBack }) {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         autoComplete="email"
-                        onKeyDown={(e) => e.key === 'Enter' && emailValid && otpMut.mutate()}
+                    />
+                    <Input
+                        type="tel"
+                        label="Phone Number"
+                        placeholder="10-digit mobile number"
+                        inputMode="numeric"
+                        maxLength={10}
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                        autoComplete="tel"
+                        onKeyDown={(e) => e.key === 'Enter' && emailValid && phoneValid && otpMut.mutate()}
                     />
                     <Button
                         className="w-full"
                         loading={otpMut.isPending}
-                        disabled={!emailValid}
+                        disabled={!emailValid || !phoneValid}
                         onClick={() => otpMut.mutate()}
                     >
                         Send OTP

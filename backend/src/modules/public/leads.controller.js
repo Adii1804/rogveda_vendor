@@ -19,13 +19,14 @@ const sendLeadOtp = async (req, res) => {
 };
 
 const submitLead = async (req, res) => {
-    const { email, otp } = req.body;
+    const { email, otp, phone } = req.body;
 
     if (!email || !otp) return error(res, 'Email and OTP are required');
 
     const emailClean = email.trim().toLowerCase();
-    const valid = await verifyOtp(emailClean, 'vendor_lead_verification', otp);
+    const phoneClean = phone?.trim() || null;
 
+    const valid = await verifyOtp(emailClean, 'vendor_lead_verification', otp);
     if (!valid) return error(res, 'Invalid or expired OTP. Please request a new one.', 400);
 
     // Check for duplicate
@@ -43,6 +44,7 @@ const submitLead = async (req, res) => {
         .insert(vendorLeads)
         .values({
             email: emailClean,
+            phoneNumber: phoneClean,
             emailVerified: true,
             status: 'new',
             isDuplicate,
