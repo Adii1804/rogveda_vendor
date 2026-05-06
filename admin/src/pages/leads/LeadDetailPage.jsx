@@ -89,11 +89,13 @@ function LeadDetailContent({ id }) {
         const locked = new Set((notesData?.notes || []).map(n => n.status_at_time));
         const available = STATUSES.filter(s => !locked.has(s));
 
-        // Default to current lead status if it hasn't been committed yet,
-        // otherwise default to first remaining available status
-        const defaultStatus = !locked.has(lead.status)
-            ? lead.status
-            : (available[0] || '');
+        // Default to current lead status only if it's a pipeline status that
+        // hasn't been committed yet; 'new' is auto-assigned and not in STATUSES,
+        // so fall through to the first remaining available status in that case
+        const defaultStatus =
+            STATUSES.includes(lead.status) && !locked.has(lead.status)
+                ? lead.status
+                : (available[0] || '');
 
         setDraftStatus(defaultStatus);
         setDraftCallback(
