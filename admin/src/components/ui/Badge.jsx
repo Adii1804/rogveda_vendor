@@ -9,7 +9,7 @@ const colors = {
     approved: 'bg-emerald-100 text-emerald-700',
     rejected: 'bg-red-100 text-red-700',
     // Vendor lead pipeline status
-    new: 'bg-purple-100 text-purple-700',
+    new: 'bg-gray-100 text-gray-700',
     contacted: 'bg-blue-100 text-blue-700',
     // under_review and approved/rejected already covered above
     // Profile status
