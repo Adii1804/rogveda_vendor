@@ -10,8 +10,8 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Input } from '@/components/ui/Input';
 import { PageLoader } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
-import { formatDateTime, formatDate, shortId } from '@/lib/utils';
-import { useState, useEffect } from 'react';
+import { formatDateTime, shortId } from '@/lib/utils';
+import { useState, useEffect, useMemo } from 'react';
 
 const STATUSES = ['new', 'contacted', 'under_review', 'approved', 'rejected'];
 
@@ -24,7 +24,6 @@ function InfoRow({ label, value }) {
     );
 }
 
-// Status → colour mapping (matches Badge colours)
 const STATUS_PILL = {
     new:          'bg-gray-100 text-gray-700',
     contacted:    'bg-blue-100 text-blue-700',
@@ -62,10 +61,9 @@ function LeadDetailContent({ id }) {
     const qc = useQueryClient();
     const { toast } = useToast();
 
-    const [status, setStatus]           = useState('');
-    const [callbackDate, setCallbackDate] = useState('');
-    const [crmDirty, setCrmDirty]       = useState(false);
-    const [noteText, setNoteText]       = useState('');
+    const [draftStatus, setDraftStatus]   = useState('');
+    const [draftCallback, setDraftCallback] = useState('');
+    const [draftNote, setDraftNote]       = useState('');
 
     const { data: lead, isLoading } = useQuery({
         queryKey: ['lead', id],
@@ -78,61 +76,68 @@ function LeadDetailContent({ id }) {
         enabled: !!lead,
     });
 
-    const notes = notesData?.notes || [];
+    const notes = useMemo(() => notesData?.notes || [], [notesData]);
 
-    // Sync status/callback form when lead loads
+    // Statuses that already have a committed note — permanently locked
+    const lockedStatuses = useMemo(() => new Set(notes.map(n => n.status_at_time)), [notes]);
+
+    // Statuses still open for the next action
+    const availableStatuses = useMemo(
+        () => STATUSES.filter(s => !lockedStatuses.has(s)),
+        [lockedStatuses]
+    );
+
+    // Sync draft state whenever lead or notes data changes (e.g. after a save)
     useEffect(() => {
-        if (lead) {
-            setStatus(lead.status);
-            setCallbackDate(
-                lead.callback_reminder_at
-                    ? new Date(lead.callback_reminder_at).toISOString().slice(0, 16)
-                    : ''
-            );
-            setCrmDirty(false);
-        }
-    }, [lead]);
+        if (!lead || notesLoading) return;
 
-    // ── Update status / callback ──
-    const updateMut = useMutation({
-        mutationFn: (data) => updateLead(id, data),
-        onSuccess: (_result, variables) => {
-            qc.setQueryData(['lead', id], (old) => (old ? { ...old, ...variables } : old));
-            qc.invalidateQueries({ queryKey: ['lead', id] });
-            qc.invalidateQueries({ queryKey: ['leads'] });
-            toast('Lead updated');
-            setCrmDirty(false);
+        const locked = new Set((notesData?.notes || []).map(n => n.status_at_time));
+        const available = STATUSES.filter(s => !locked.has(s));
+
+        // Default to current lead status if it hasn't been committed yet,
+        // otherwise default to first remaining available status
+        const defaultStatus = !locked.has(lead.status)
+            ? lead.status
+            : (available[0] || '');
+
+        setDraftStatus(defaultStatus);
+        setDraftCallback(
+            lead.callback_reminder_at
+                ? new Date(lead.callback_reminder_at).toISOString().slice(0, 16)
+                : ''
+        );
+        // draftNote intentionally NOT reset here — cleared by onSuccess after save
+    }, [lead, notesData]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // ── Combined mutation: update status + add note in a single user action ──
+    const saveMut = useMutation({
+        mutationFn: async ({ status, note, callbackAt }) => {
+            await updateLead(id, {
+                status,
+                callback_reminder_at: callbackAt ? new Date(callbackAt).toISOString() : null,
+            });
+            return addLeadNote(id, { note, status_at_time: status });
         },
-        onError: (err) => toast(err.response?.data?.error || 'Update failed', 'error'),
-    });
-
-    // ── Add note ──
-    const noteMut = useMutation({
-        mutationFn: (data) => addLeadNote(id, data),
         onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['lead', id] });
             qc.invalidateQueries({ queryKey: ['lead-notes', id] });
-            setNoteText('');
-            toast('Note saved');
+            qc.invalidateQueries({ queryKey: ['leads'] });
+            setDraftNote('');
+            toast('Saved');
         },
-        onError: (err) => toast(err.response?.data?.error || 'Failed to save note', 'error'),
+        onError: (err) => toast(err.response?.data?.error || 'Save failed', 'error'),
     });
 
-    const handleUpdateCrm = () => {
-        updateMut.mutate({
-            status,
-            callback_reminder_at: callbackDate ? new Date(callbackDate).toISOString() : null,
-        });
-    };
-
-    const handleAddNote = () => {
-        if (!noteText.trim()) return;
-        noteMut.mutate({ note: noteText, status_at_time: status });
+    const handleSave = () => {
+        if (!draftNote.trim() || !draftStatus) return;
+        saveMut.mutate({ status: draftStatus, note: draftNote, callbackAt: draftCallback });
     };
 
     if (isLoading) return <PageLoader />;
     if (!lead) return <div className="p-8 text-gray-500">Lead not found.</div>;
 
     const isApproved = lead.status === 'approved';
+    const canSave    = draftNote.trim().length > 0 && !!draftStatus;
 
     return (
         <div className="p-8 max-w-3xl">
@@ -179,26 +184,36 @@ function LeadDetailContent({ id }) {
                     </CardBody>
                 </Card>
 
-                {/* ── Pipeline Status & Callback ── */}
+                {/* ── Pipeline (status + note combined into one action) ── */}
                 <Card>
                     <CardHeader>
-                        <h2 className="text-sm font-semibold text-gray-900">Pipeline Status</h2>
+                        <h2 className="text-sm font-semibold text-gray-900">Pipeline</h2>
                     </CardHeader>
                     <CardBody>
                         {isApproved ? (
                             <div className="rounded-lg bg-emerald-50 border border-emerald-100 px-4 py-3 text-sm text-emerald-800">
-                                This lead has been <strong>approved</strong>. The pipeline status is locked.
+                                This lead has been <strong>approved</strong>. The pipeline is locked.
+                            </div>
+                        ) : notesLoading ? (
+                            <p className="text-sm text-gray-400 py-2">Loading…</p>
+                        ) : availableStatuses.length === 0 ? (
+                            <div className="rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm text-gray-600">
+                                All pipeline statuses have been used. No further actions available.
                             </div>
                         ) : (
                             <div className="flex flex-col gap-4">
+                                {/* Status + callback on the same row */}
                                 <div className="flex flex-wrap gap-4">
                                     <Select
                                         label="Status"
-                                        value={status}
-                                        onChange={(e) => { setStatus(e.target.value); setCrmDirty(true); }}
+                                        value={draftStatus}
+                                        onChange={(e) => {
+                                            setDraftStatus(e.target.value);
+                                            setDraftNote(''); // clear note when status changes
+                                        }}
                                         className="w-48"
                                     >
-                                        {STATUSES.map((s) => (
+                                        {availableStatuses.map((s) => (
                                             <option key={s} value={s}>
                                                 {s.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase())}
                                             </option>
@@ -207,67 +222,56 @@ function LeadDetailContent({ id }) {
                                     <Input
                                         label="Callback Reminder"
                                         type="datetime-local"
-                                        value={callbackDate}
-                                        onChange={(e) => { setCallbackDate(e.target.value); setCrmDirty(true); }}
+                                        value={draftCallback}
+                                        onChange={(e) => setDraftCallback(e.target.value)}
                                         className="w-64"
                                     />
                                 </div>
-                                <div className="flex justify-end">
-                                    <Button
-                                        onClick={handleUpdateCrm}
-                                        loading={updateMut.isPending}
-                                        disabled={!crmDirty}
-                                    >
-                                        Save Status
-                                    </Button>
-                                </div>
+
+                                {/* Note textarea — always visible once status is chosen */}
+                                <Textarea
+                                    label={`Note for "${draftStatus ? draftStatus.replace(/_/g, ' ') : ''}"`}
+                                    placeholder="Write a note to commit this status…"
+                                    rows={3}
+                                    value={draftNote}
+                                    onChange={(e) => setDraftNote(e.target.value)}
+                                />
+
+                                {/* Save button only appears once the note has content */}
+                                {canSave && (
+                                    <div className="flex justify-end">
+                                        <Button
+                                            onClick={handleSave}
+                                            loading={saveMut.isPending}
+                                        >
+                                            Save
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </CardBody>
                 </Card>
 
-                {/* ── Notes Timeline + Add Note ── */}
+                {/* ── History (read-only timeline of committed notes) ── */}
                 <Card>
                     <CardHeader>
                         <div className="flex items-center justify-between">
-                            <h2 className="text-sm font-semibold text-gray-900">Notes</h2>
-                            <span className="text-xs text-gray-400">{notes.length} note{notes.length !== 1 ? 's' : ''}</span>
+                            <h2 className="text-sm font-semibold text-gray-900">History</h2>
+                            <span className="text-xs text-gray-400">
+                                {notes.length} {notes.length === 1 ? 'entry' : 'entries'}
+                            </span>
                         </div>
                     </CardHeader>
                     <CardBody>
-                        {/* History */}
                         {notesLoading ? (
-                            <p className="text-sm text-gray-400 py-2">Loading notes…</p>
+                            <p className="text-sm text-gray-400 py-2">Loading…</p>
                         ) : notes.length === 0 ? (
-                            <p className="text-sm text-gray-400 py-2">No notes yet. Add the first one below.</p>
+                            <p className="text-sm text-gray-400 py-2">
+                                No history yet. Save a status note above to start the timeline.
+                            </p>
                         ) : (
-                            <div className="mb-4">
-                                {notes.map((n) => (
-                                    <NoteEntry key={n.id} note={n} />
-                                ))}
-                            </div>
-                        )}
-
-                        {/* Add Note form — only while lead is not yet approved */}
-                        {!isApproved && (
-                            <div className="pt-3 border-t border-gray-100 flex flex-col gap-3">
-                                <Textarea
-                                    label="Add a note"
-                                    placeholder={`Write a note… (tagged as "${status.replace(/_/g, ' ')}")`}
-                                    rows={3}
-                                    value={noteText}
-                                    onChange={(e) => setNoteText(e.target.value)}
-                                />
-                                <div className="flex justify-end">
-                                    <Button
-                                        onClick={handleAddNote}
-                                        loading={noteMut.isPending}
-                                        disabled={!noteText.trim()}
-                                    >
-                                        Add Note
-                                    </Button>
-                                </div>
-                            </div>
+                            notes.map((n) => <NoteEntry key={n.id} note={n} />)
                         )}
                     </CardBody>
                 </Card>
