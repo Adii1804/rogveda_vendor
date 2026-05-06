@@ -36,7 +36,9 @@ const reviewKycDocument = async (req, res) => {
                 await insertVendorNotification(result.vendor_id, {
                     type: 'kyc_doc_rejected',
                     title: `Document rejected: ${result.document_name || 'KYC document'}`,
-                    body: rejection_reason || 'Please review the feedback and upload a corrected document.',
+                    body:
+                        rejection_reason ||
+                        'Please review the feedback and upload a corrected document.',
                 });
             }
 

@@ -43,10 +43,7 @@ const markAllRead = async (req, res) => {
         .update(vendorNotifications)
         .set({ readAt: new Date() })
         .where(
-            and(
-                eq(vendorNotifications.vendorId, vendor[0].id),
-                isNull(vendorNotifications.readAt)
-            )
+            and(eq(vendorNotifications.vendorId, vendor[0].id), isNull(vendorNotifications.readAt))
         );
 
     return ok(res, { message: 'Notifications marked as read.' });

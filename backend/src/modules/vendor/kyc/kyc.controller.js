@@ -199,7 +199,10 @@ const submitKyc = async (req, res) => {
         .select({ id: vendorKycDocuments.id })
         .from(vendorKycDocuments)
         .where(
-            and(eq(vendorKycDocuments.vendorId, vendor.id), eq(vendorKycDocuments.status, 'uploaded'))
+            and(
+                eq(vendorKycDocuments.vendorId, vendor.id),
+                eq(vendorKycDocuments.status, 'uploaded')
+            )
         )
         .limit(1);
 
@@ -230,7 +233,10 @@ const submitKyc = async (req, res) => {
         .update(vendorKycDocuments)
         .set({ status: 'under_review', updatedAt: new Date() })
         .where(
-            and(eq(vendorKycDocuments.vendorId, vendor.id), eq(vendorKycDocuments.status, 'uploaded'))
+            and(
+                eq(vendorKycDocuments.vendorId, vendor.id),
+                eq(vendorKycDocuments.status, 'uploaded')
+            )
         );
 
     await db

@@ -21,28 +21,30 @@ const activateVendor = async (req, res) => {
 };
 
 const deactivateVendor = async (req, res) => {
-    return await db.transaction(async (tx) => {
-        const result = await tx.execute(
-            sql`UPDATE users u SET status = 'inactive', updated_at = NOW()
+    return await db
+        .transaction(async (tx) => {
+            const result = await tx.execute(
+                sql`UPDATE users u SET status = 'inactive', updated_at = NOW()
                 FROM vendors v
                 WHERE v.user_id = u.id AND v.id = ${req.params.id}
                 RETURNING u.id, u.status`
-        );
-        if (!result.rows.length) {
-            throw Object.assign(new Error('Vendor not found'), { statusCode: 404 });
-        }
+            );
+            if (!result.rows.length) {
+                throw Object.assign(new Error('Vendor not found'), { statusCode: 404 });
+            }
 
-        // Revoke all active sessions immediately — PRD: session invalidated on next API call
-        await tx
-            .update(sessions)
-            .set({ revokedAt: new Date() })
-            .where(and(eq(sessions.userId, result.rows[0].id), isNull(sessions.revokedAt)));
+            // Revoke all active sessions immediately — PRD: session invalidated on next API call
+            await tx
+                .update(sessions)
+                .set({ revokedAt: new Date() })
+                .where(and(eq(sessions.userId, result.rows[0].id), isNull(sessions.revokedAt)));
 
-        return ok(res, { message: 'Vendor deactivated. All sessions revoked.' });
-    }).catch((err) => {
-        if (err.statusCode === 404) return error(res, err.message, 404);
-        throw err;
-    });
+            return ok(res, { message: 'Vendor deactivated. All sessions revoked.' });
+        })
+        .catch((err) => {
+            if (err.statusCode === 404) return error(res, err.message, 404);
+            throw err;
+        });
 };
 
 const getDeactivationRequests = async (req, res) => {

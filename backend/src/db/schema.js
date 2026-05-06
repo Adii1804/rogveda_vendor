@@ -93,7 +93,6 @@ const vendors = pgTable('vendors', {
 });
 
 // ─── vendor_leads ─────────────────────────────────────────────────────────────
-// NOTE: created_vendor_user_id column intentionally omitted — it is being removed
 const vendorLeads = pgTable('vendor_leads', {
     id: uuid('id').defaultRandom().primaryKey(),
     email: varchar('email', { length: 255 }).notNull(),

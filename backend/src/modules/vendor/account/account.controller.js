@@ -17,12 +17,7 @@ const requestDeactivation = async (req, res) => {
             deactivationRequestedAt: new Date(),
             updatedAt: new Date(),
         })
-        .where(
-            and(
-                eq(vendors.userId, req.user.user_id),
-                eq(vendors.deactivationRequested, false)
-            )
-        )
+        .where(and(eq(vendors.userId, req.user.user_id), eq(vendors.deactivationRequested, false)))
         .returning({
             id: vendors.id,
             deactivationRequestedAt: vendors.deactivationRequestedAt,

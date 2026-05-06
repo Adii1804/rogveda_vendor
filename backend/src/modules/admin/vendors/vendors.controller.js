@@ -38,7 +38,6 @@ const createVendor = async (req, res) => {
         return error(res, 'Invalid or inactive service category');
     }
 
-    // NOTE: created_vendor_user_id check removed — column is being dropped
     if (lead_id) {
         const lead = await db
             .select({ id: vendorLeads.id, status: vendorLeads.status })

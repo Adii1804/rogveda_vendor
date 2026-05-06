@@ -98,9 +98,7 @@ const updateProfile = async (req, res) => {
     }
 
     if (req.body.facility_photo_urls !== undefined) {
-        const arr = Array.isArray(req.body.facility_photo_urls)
-            ? req.body.facility_photo_urls
-            : [];
+        const arr = Array.isArray(req.body.facility_photo_urls) ? req.body.facility_photo_urls : [];
         if (arr.length > 10) return error(res, 'Maximum 10 facility photos allowed');
         setValues.facilityPhotoUrls = arr;
     }

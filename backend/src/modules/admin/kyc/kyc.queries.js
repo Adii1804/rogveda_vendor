@@ -1,10 +1,5 @@
 const db = require('../../../db/index');
-const {
-    vendorKycDocuments,
-    vendorKycChecklists,
-    vendors,
-    users,
-} = require('../../../db/schema');
+const { vendorKycDocuments, vendorKycChecklists, vendors, users } = require('../../../db/schema');
 const { eq, and, sql } = require('drizzle-orm');
 const { getSignedUrl } = require('../../../utils/storage');
 

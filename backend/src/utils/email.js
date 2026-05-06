@@ -10,7 +10,9 @@ function getTransporter() {
 
     if (!env.email.user || !env.email.pass) {
         // No SMTP credentials — fall back to console logging in development
-        console.warn('[email] SMTP_USER / SMTP_PASS not set. Emails will be logged to console only.');
+        console.warn(
+            '[email] SMTP_USER / SMTP_PASS not set. Emails will be logged to console only.'
+        );
         return null;
     }
 
@@ -42,7 +44,7 @@ async function send({ to, subject, html, text }) {
 
     try {
         const info = await transporter.sendMail({
-            from: env.email.from,   // SMTP_FROM already contains the display name, e.g. "Rogveda <user@gmail.com>"
+            from: env.email.from, // SMTP_FROM already contains the display name, e.g. "Rogveda <user@gmail.com>"
             to,
             subject,
             html,
@@ -134,7 +136,9 @@ const sendOtp = async ({ email, otp, type }) => {
         note: 'This code expires in <strong>10 minutes</strong>.',
     };
 
-    const html = layout(cfg.subject, `
+    const html = layout(
+        cfg.subject,
+        `
         <h2 style="margin:0 0 8px;font-size:20px;color:#111827;">${cfg.heading}</h2>
         <p style="margin:0 0 24px;font-size:15px;color:#6b7280;">${cfg.intro}</p>
 
@@ -143,7 +147,8 @@ const sendOtp = async ({ email, otp, type }) => {
         </div>
 
         <p style="margin:0;font-size:13px;color:#9ca3af;">${cfg.note}</p>
-    `);
+    `
+    );
 
     await send({
         to: email,
@@ -155,7 +160,9 @@ const sendOtp = async ({ email, otp, type }) => {
 
 const sendLeadConfirmation = async ({ email }) => {
     const subject = 'We received your interest — Rogveda';
-    const html = layout(subject, `
+    const html = layout(
+        subject,
+        `
         <h2 style="margin:0 0 8px;font-size:20px;color:#111827;">Thank you for your interest!</h2>
         <p style="margin:0 0 16px;font-size:15px;color:#374151;">
             We've received your submission and our team will review it shortly.
@@ -172,7 +179,8 @@ const sendLeadConfirmation = async ({ email }) => {
         <p style="margin:0;font-size:13px;color:#9ca3af;">
             If you have questions, reply to this email or contact us at support@rogveda.com.
         </p>
-    `);
+    `
+    );
 
     await send({
         to: email,
@@ -184,7 +192,9 @@ const sendLeadConfirmation = async ({ email }) => {
 
 const sendVendorCredentials = async ({ email, loginId, tempPassword, facilityName }) => {
     const subject = 'Your Rogveda vendor account is ready';
-    const html = layout(subject, `
+    const html = layout(
+        subject,
+        `
         <h2 style="margin:0 0 8px;font-size:20px;color:#111827;">Your account is ready</h2>
         <p style="margin:0 0 24px;font-size:15px;color:#6b7280;">
             ${facilityName ? `Welcome, <strong>${facilityName}</strong>!` : 'Welcome!'} Your Rogveda vendor account has been activated.
@@ -219,7 +229,8 @@ const sendVendorCredentials = async ({ email, loginId, tempPassword, facilityNam
                 Keep these credentials safe and do not share them.
             </p>
         </div>
-    `);
+    `
+    );
 
     await send({
         to: email,
@@ -233,13 +244,13 @@ const sendVendorCredentials = async ({ email, loginId, tempPassword, facilityNam
 
 // Maps notification type → accent colour so each email feels contextual
 const NOTIFICATION_COLORS = {
-    kyc_doc_rejected:        { border: '#ef4444', bg: '#fef2f2', text: '#991b1b' },
-    kyc_complete:            { border: '#22c55e', bg: '#f0fdf4', text: '#166534' },
-    profile_approved:        { border: '#22c55e', bg: '#f0fdf4', text: '#166534' },
-    profile_rejected:        { border: '#ef4444', bg: '#fef2f2', text: '#991b1b' },
-    account_deactivated:     { border: '#f59e0b', bg: '#fffbeb', text: '#92400e' },
-    deactivation_rejected:   { border: '#ef4444', bg: '#fef2f2', text: '#991b1b' },
-    kyc_under_review:        { border: '#3b82f6', bg: '#eff6ff', text: '#1e40af' },
+    kyc_doc_rejected: { border: '#ef4444', bg: '#fef2f2', text: '#991b1b' },
+    kyc_complete: { border: '#22c55e', bg: '#f0fdf4', text: '#166534' },
+    profile_approved: { border: '#22c55e', bg: '#f0fdf4', text: '#166534' },
+    profile_rejected: { border: '#ef4444', bg: '#fef2f2', text: '#991b1b' },
+    account_deactivated: { border: '#f59e0b', bg: '#fffbeb', text: '#92400e' },
+    deactivation_rejected: { border: '#ef4444', bg: '#fef2f2', text: '#991b1b' },
+    kyc_under_review: { border: '#3b82f6', bg: '#eff6ff', text: '#1e40af' },
 };
 const DEFAULT_COLOR = { border: '#2563eb', bg: '#eff6ff', text: '#1e40af' };
 
@@ -247,12 +258,18 @@ const sendNotificationEmail = async ({ email, title, body, type }) => {
     const color = NOTIFICATION_COLORS[type] || DEFAULT_COLOR;
     const subject = `${title} — Rogveda`;
 
-    const html = layout(subject, `
+    const html = layout(
+        subject,
+        `
         <h2 style="margin:0 0 16px;font-size:20px;color:#111827;">${title}</h2>
-        ${body ? `
+        ${
+            body
+                ? `
         <div style="background:${color.bg};border-left:4px solid ${color.border};border-radius:4px;padding:12px 16px;margin:0 0 24px;">
             <p style="margin:0;font-size:14px;color:${color.text};">${body}</p>
-        </div>` : ''}
+        </div>`
+                : ''
+        }
         <div style="text-align:center;margin:0 0 8px;">
             <a href="${env.urls.vendor}"
                style="display:inline-block;background:#2563eb;color:#ffffff;font-size:15px;font-weight:600;padding:12px 28px;border-radius:6px;text-decoration:none;">
@@ -262,7 +279,8 @@ const sendNotificationEmail = async ({ email, title, body, type }) => {
         <p style="margin:16px 0 0;font-size:13px;color:#9ca3af;text-align:center;">
             If you have questions, contact us at support@rogveda.com.
         </p>
-    `);
+    `
+    );
 
     await send({
         to: email,
@@ -274,7 +292,9 @@ const sendNotificationEmail = async ({ email, title, body, type }) => {
 
 const sendKycDocRejected = async ({ email, documentName, reason }) => {
     const subject = `Action needed: ${documentName} was not accepted — Rogveda`;
-    const html = layout(subject, `
+    const html = layout(
+        subject,
+        `
         <h2 style="margin:0 0 8px;font-size:20px;color:#111827;">Document not accepted</h2>
         <p style="margin:0 0 16px;font-size:15px;color:#374151;">
             One of your KYC documents requires attention. Please review the feedback below and upload a corrected version.
@@ -294,7 +314,8 @@ const sendKycDocRejected = async ({ email, documentName, reason }) => {
         <p style="margin:0;font-size:13px;color:#9ca3af;">
             If you have questions, contact us at support@rogveda.com.
         </p>
-    `);
+    `
+    );
 
     await send({
         to: email,
@@ -306,7 +327,9 @@ const sendKycDocRejected = async ({ email, documentName, reason }) => {
 
 const sendKycComplete = async ({ email, facilityName }) => {
     const subject = 'KYC approved — set up your Rogveda profile';
-    const html = layout(subject, `
+    const html = layout(
+        subject,
+        `
         <h2 style="margin:0 0 8px;font-size:20px;color:#111827;">KYC verification complete ✓</h2>
         <p style="margin:0 0 16px;font-size:15px;color:#374151;">
             ${facilityName ? `Great news, <strong>${facilityName}</strong>!` : 'Great news!'} All your KYC documents have been reviewed and approved.
@@ -325,7 +348,8 @@ const sendKycComplete = async ({ email, facilityName }) => {
         <p style="margin:0;font-size:13px;color:#9ca3af;">
             If you have questions, contact us at support@rogveda.com.
         </p>
-    `);
+    `
+    );
 
     await send({
         to: email,
@@ -340,7 +364,10 @@ const sendProfileDecision = async ({ email, approved, facilityName, reason }) =>
         ? 'Your Rogveda profile has been approved!'
         : 'Update needed on your Rogveda profile';
 
-    const html = layout(subject, approved ? `
+    const html = layout(
+        subject,
+        approved
+            ? `
         <h2 style="margin:0 0 8px;font-size:20px;color:#111827;">Profile approved 🎉</h2>
         <p style="margin:0 0 16px;font-size:15px;color:#374151;">
             ${facilityName ? `Congratulations, <strong>${facilityName}</strong>!` : 'Congratulations!'} Your facility profile has been reviewed and <strong>approved</strong> by the Rogveda team.
@@ -359,16 +386,21 @@ const sendProfileDecision = async ({ email, approved, facilityName, reason }) =>
         <p style="margin:0;font-size:13px;color:#9ca3af;">
             If you have any questions, contact us at support@rogveda.com.
         </p>
-    ` : `
+    `
+            : `
         <h2 style="margin:0 0 8px;font-size:20px;color:#111827;">Profile needs changes</h2>
         <p style="margin:0 0 16px;font-size:15px;color:#374151;">
             Your facility profile has been reviewed. Unfortunately it was not approved at this time and requires some changes.
         </p>
-        ${reason ? `
+        ${
+            reason
+                ? `
         <div style="background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;padding:12px 16px;margin:0 0 24px;">
             <p style="margin:0 0 4px;font-size:13px;font-weight:600;color:#991b1b;">Feedback from our team:</p>
             <p style="margin:0;font-size:14px;color:#991b1b;">${reason}</p>
-        </div>` : ''}
+        </div>`
+                : ''
+        }
         <p style="margin:0 0 24px;font-size:15px;color:#374151;">
             Please update your profile based on the feedback above and resubmit for review.
         </p>
@@ -381,7 +413,8 @@ const sendProfileDecision = async ({ email, approved, facilityName, reason }) =>
         <p style="margin:0;font-size:13px;color:#9ca3af;">
             If you have questions, contact us at support@rogveda.com.
         </p>
-    `);
+    `
+    );
 
     await send({
         to: email,
@@ -398,7 +431,10 @@ const sendDeactivationDecision = async ({ email, approved, reason }) => {
         ? 'Your deactivation request has been processed — Rogveda'
         : 'Update on your deactivation request — Rogveda';
 
-    const html = layout(subject, approved ? `
+    const html = layout(
+        subject,
+        approved
+            ? `
         <h2 style="margin:0 0 8px;font-size:20px;color:#111827;">Account deactivated</h2>
         <p style="margin:0 0 16px;font-size:15px;color:#374151;">
             Your account deactivation request has been approved. Your vendor account is now deactivated
@@ -407,19 +443,25 @@ const sendDeactivationDecision = async ({ email, approved, reason }) => {
         <p style="margin:0;font-size:13px;color:#9ca3af;">
             If you change your mind in the future, contact us at support@rogveda.com.
         </p>
-    ` : `
+    `
+            : `
         <h2 style="margin:0 0 8px;font-size:20px;color:#111827;">Deactivation request not approved</h2>
         <p style="margin:0 0 16px;font-size:15px;color:#374151;">
             Your account deactivation request has been reviewed and was not approved at this time.
         </p>
-        ${reason ? `
+        ${
+            reason
+                ? `
         <div style="background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;padding:12px 16px;margin:0 0 16px;">
             <p style="margin:0;font-size:14px;color:#991b1b;"><strong>Reason:</strong> ${reason}</p>
-        </div>` : ''}
+        </div>`
+                : ''
+        }
         <p style="margin:0;font-size:13px;color:#9ca3af;">
             If you have questions, contact us at support@rogveda.com.
         </p>
-    `);
+    `
+    );
 
     await send({
         to: email,

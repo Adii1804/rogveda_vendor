@@ -23,13 +23,13 @@ module.exports = {
     supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY,
     urls: {
         vendor: process.env.VENDOR_PORTAL_URL || 'http://localhost:5174',
-        admin:  process.env.ADMIN_PORTAL_URL  || 'http://localhost:5173',
-        public: process.env.PUBLIC_URL         || 'http://localhost:5175',
+        admin: process.env.ADMIN_PORTAL_URL || 'http://localhost:5173',
+        public: process.env.PUBLIC_URL || 'http://localhost:5175',
     },
     email: {
         host: process.env.SMTP_HOST || 'smtp.gmail.com',
         port: parseInt(process.env.SMTP_PORT) || 587,
-        secure: process.env.SMTP_SECURE === 'true',   // true for 465, false for 587
+        secure: process.env.SMTP_SECURE === 'true', // true for 465, false for 587
         user: process.env.SMTP_USER || '',
         pass: process.env.SMTP_PASS || '',
         from: process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@rogveda.com',

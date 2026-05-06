@@ -9,7 +9,12 @@ const {
     getDocuments,
     submitKyc,
 } = require('./kyc/kyc.controller');
-const { getProfile, updateProfile, uploadProfilePhoto, submitProfile } = require('./profile/profile.controller');
+const {
+    getProfile,
+    updateProfile,
+    uploadProfilePhoto,
+    submitProfile,
+} = require('./profile/profile.controller');
 const { requestDeactivation } = require('./account/account.controller');
 const { listNotifications, markAllRead } = require('./notifications/notifications.controller');
 
@@ -49,7 +54,6 @@ router.post('/profile/submit', submitProfile);
 router.get('/notifications', listNotifications);
 router.post('/notifications/read-all', markAllRead);
 
-router.post('/deactivation-request', requestDeactivation);
 router.post('/account/deactivation-request', requestDeactivation);
 
 module.exports = router;

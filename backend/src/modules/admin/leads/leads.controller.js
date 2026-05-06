@@ -41,8 +41,6 @@ const updateLeadStatus = async (req, res) => {
         return error(res, 'This lead is approved and its status can no longer be changed');
     }
 
-    // NOTE: created_vendor_user_id rejection guard removed — column is being dropped
-
     const updated = await updateLead(req.params.id, req.body, req.user.user_id);
     return ok(res, updated);
 };

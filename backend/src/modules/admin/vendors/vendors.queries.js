@@ -58,7 +58,6 @@ const createVendorAccount = async ({
                 .where(eq(vendors.userId, user.id));
         }
 
-        // NOTE: created_vendor_user_id update removed — column is being dropped
         if (leadId) {
             await tx
                 .update(vendorLeads)
@@ -82,18 +81,16 @@ const getVendors = async ({
 
     // Build dynamic WHERE conditions as SQL chunks
     const conditions = [];
-    if (kyc_status)           conditions.push(sql`v.kyc_status = ${kyc_status}`);
-    if (profile_status)       conditions.push(sql`v.profile_status = ${profile_status}`);
-    if (service_category_id)  conditions.push(sql`v.service_category_id = ${service_category_id}`);
+    if (kyc_status) conditions.push(sql`v.kyc_status = ${kyc_status}`);
+    if (profile_status) conditions.push(sql`v.profile_status = ${profile_status}`);
+    if (service_category_id) conditions.push(sql`v.service_category_id = ${service_category_id}`);
     if (search) {
         const pattern = `%${search}%`;
         conditions.push(sql`(u.email ILIKE ${pattern} OR v.facility_name ILIKE ${pattern})`);
     }
 
     const whereClause =
-        conditions.length > 0
-            ? sql`WHERE ${sql.join(conditions, sql` AND `)}`
-            : sql``;
+        conditions.length > 0 ? sql`WHERE ${sql.join(conditions, sql` AND `)}` : sql``;
 
     const result = await db.execute(
         sql`SELECT v.id, v.kyc_status, v.profile_status, v.facility_name,
@@ -154,9 +151,7 @@ const getVendorById = async (id) => {
     let facility_photo_previews = [];
     if (vendor.facility_photo_urls?.length) {
         facility_photo_previews = await Promise.all(
-            vendor.facility_photo_urls.map((path) =>
-                getSignedUrl(path, 3600).catch(() => null)
-            )
+            vendor.facility_photo_urls.map((path) => getSignedUrl(path, 3600).catch(() => null))
         );
         facility_photo_previews = facility_photo_previews.filter(Boolean);
     }

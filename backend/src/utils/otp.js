@@ -60,10 +60,7 @@ const verifyOtp = async (identifier, type, inputOtp) => {
     const valid = await bcrypt.compare(inputOtp.toString(), record.otpHash);
     if (!valid) return false;
 
-    await db
-        .update(otpRequests)
-        .set({ usedAt: new Date() })
-        .where(eq(otpRequests.id, record.id));
+    await db.update(otpRequests).set({ usedAt: new Date() }).where(eq(otpRequests.id, record.id));
 
     return true;
 };

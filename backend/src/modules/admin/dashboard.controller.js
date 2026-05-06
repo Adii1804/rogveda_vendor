@@ -25,7 +25,15 @@ const getDashboard = async (req, res) => {
     ]);
 
     // Leads — approved = converted lead
-    const leads = { total: 0, new: 0, contacted: 0, under_review: 0, approved: 0, rejected: 0, converted: 0 };
+    const leads = {
+        total: 0,
+        new: 0,
+        contacted: 0,
+        under_review: 0,
+        approved: 0,
+        rejected: 0,
+        converted: 0,
+    };
     for (const row of leadsResult.rows) {
         leads[row.status] = parseInt(row.count);
         leads.total += parseInt(row.count);
@@ -45,10 +53,10 @@ const getDashboard = async (req, res) => {
     for (const row of vendorsKycResult.rows) {
         const status = row.kyc_status;
         const count = parseInt(row.count);
-        if (status === 'complete')          vendorsData.complete = count;
+        if (status === 'complete') vendorsData.complete = count;
         else if (status === 'under_review') vendorsData.under_review = count;
-        else if (status === 'in_progress')  vendorsData.in_progress = count;
-        else if (status === 'pending')      vendorsData.not_started = count;
+        else if (status === 'in_progress') vendorsData.in_progress = count;
+        else if (status === 'pending') vendorsData.not_started = count;
     }
 
     return ok(res, {
