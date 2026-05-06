@@ -160,6 +160,10 @@ function LeadDetailContent({ id }) {
                     </CardHeader>
                     <CardBody>
                         <InfoRow label="Email" value={lead.email} />
+                        <InfoRow
+                            label="Email Verified"
+                            value={lead.email_verified ? '✓ Yes' : '✗ No'}
+                        />
                         <InfoRow label="Submitted"    value={formatDateTime(lead.created_at)} />
                         <InfoRow label="Last Updated" value={formatDateTime(lead.updated_at)} />
                         {lead.is_duplicate && (

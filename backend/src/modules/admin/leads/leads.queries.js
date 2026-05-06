@@ -35,11 +35,12 @@ const getLeads = async ({ status, search, page = 1, limit = 20 }) => {
 };
 
 const getLeadById = async (id) => {
-    const rows = await db
-        .select()
-        .from(vendorLeads)
-        .where(eq(vendorLeads.id, id));
-    return rows[0] || null;
+    // Use db.execute so Postgres returns snake_case column names
+    // (Drizzle query builder returns camelCase which breaks the frontend)
+    const result = await db.execute(
+        sql`SELECT * FROM vendor_leads WHERE id = ${id}`
+    );
+    return result.rows[0] || null;
 };
 
 const updateLead = async (id, fields, updatedBy) => {
