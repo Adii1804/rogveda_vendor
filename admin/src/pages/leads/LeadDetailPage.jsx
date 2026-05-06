@@ -25,16 +25,10 @@ function InfoRow({ label, value }) {
     );
 }
 
-const STATUS_PILL = {
-    new:          'bg-gray-100 text-gray-700',
-    contacted:    'bg-blue-100 text-blue-700',
-    under_review: 'bg-amber-100 text-amber-700',
-    approved:     'bg-emerald-100 text-emerald-700',
-    rejected:     'bg-red-100 text-red-700',
-};
+// All history pills use the same neutral style — status label text carries the meaning
+const STATUS_PILL = 'bg-gray-100 text-gray-700';
 
 function NoteEntry({ note }) {
-    const pill = STATUS_PILL[note.status_at_time] || 'bg-gray-100 text-gray-700';
     return (
         <div className="flex gap-3 py-3 border-b border-gray-100 last:border-0">
             <div className="mt-0.5 shrink-0">
@@ -43,7 +37,7 @@ function NoteEntry({ note }) {
             <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-1">
                     {note.status_at_time && (
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${pill}`}>
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_PILL}`}>
                             {note.status_at_time.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase())}
                         </span>
                     )}
@@ -267,19 +261,22 @@ function LeadDetailContent({ id }) {
                         <div className="flex items-center justify-between">
                             <h2 className="text-sm font-semibold text-gray-900">History</h2>
                             <span className="text-xs text-gray-400">
-                                {notes.length} {notes.length === 1 ? 'entry' : 'entries'}
+                                {notes.filter(n => n.status_at_time !== 'new').length}{' '}
+                                {notes.filter(n => n.status_at_time !== 'new').length === 1 ? 'entry' : 'entries'}
                             </span>
                         </div>
                     </CardHeader>
                     <CardBody>
                         {notesLoading ? (
                             <p className="text-sm text-gray-400 py-2">Loading…</p>
-                        ) : notes.length === 0 ? (
+                        ) : notes.filter(n => n.status_at_time !== 'new').length === 0 ? (
                             <p className="text-sm text-gray-400 py-2">
                                 No history yet. Save a status note above to start the timeline.
                             </p>
                         ) : (
-                            notes.map((n) => <NoteEntry key={n.id} note={n} />)
+                            notes
+                                .filter(n => n.status_at_time !== 'new')
+                                .map((n) => <NoteEntry key={n.id} note={n} />)
                         )}
                     </CardBody>
                 </Card>
