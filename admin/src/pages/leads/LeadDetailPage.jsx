@@ -137,8 +137,10 @@ function LeadDetailContent({ id }) {
     if (isLoading) return <PageLoader />;
     if (!lead) return <div className="p-8 text-gray-500">Lead not found.</div>;
 
-    const isApproved = lead.status === 'approved';
-    const canSave    = draftNote.trim().length > 0 && !!draftStatus;
+    const isApproved  = lead.status === 'approved';
+    const isRejected  = lead.status === 'rejected';
+    const isTerminal  = isApproved || isRejected;
+    const canSave     = draftNote.trim().length > 0 && !!draftStatus;
 
     return (
         <div className="p-8 max-w-3xl">
@@ -194,6 +196,10 @@ function LeadDetailContent({ id }) {
                         {isApproved ? (
                             <div className="rounded-lg bg-emerald-50 border border-emerald-100 px-4 py-3 text-sm text-emerald-800">
                                 This lead has been <strong>approved</strong>. The pipeline is locked.
+                            </div>
+                        ) : isRejected ? (
+                            <div className="rounded-lg bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-800">
+                                This lead has been <strong>rejected</strong>. No further pipeline actions are available.
                             </div>
                         ) : notesLoading ? (
                             <p className="text-sm text-gray-400 py-2">Loading…</p>
