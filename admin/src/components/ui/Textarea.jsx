@@ -4,7 +4,20 @@ import { cn } from '@/lib/utils';
 export const Textarea = forwardRef(function Textarea({ label, error, className, ...props }, ref) {
     return (
         <div className="flex flex-col gap-1">
-            {label && <label className="text-sm font-medium text-gray-700">{label}</label>}
+            {label && (
+                <label className="text-sm font-medium text-gray-700">
+                    {label.split('*').map((part, i, arr) =>
+                        i < arr.length - 1 ? (
+                            <span key={i}>
+                                {part}
+                                <span className="text-red-500">*</span>
+                            </span>
+                        ) : (
+                            part
+                        )
+                    )}
+                </label>
+            )}
             <textarea
                 ref={ref}
                 {...props}
