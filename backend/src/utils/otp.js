@@ -1,5 +1,7 @@
 const bcrypt = require('bcryptjs');
-const pool = require('../db/pool');
+const db = require('../db/index');
+const { otpRequests } = require('../db/schema');
+const { eq, and, isNull, desc } = require('drizzle-orm');
 
 const OTP_EXPIRY_MINUTES = 10;
 const SALT_ROUNDS = 10;
@@ -13,44 +15,55 @@ const createOtpRequest = async (identifier, type, otp) => {
     const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
 
     // Supersede any previous unused OTP of same type for same identifier
-    await pool.query(
-        `UPDATE otp_requests
-         SET superseded_at = NOW()
-         WHERE identifier = $1 AND otp_type = $2 AND used_at IS NULL AND superseded_at IS NULL`,
-        [identifier.toLowerCase(), type]
-    );
+    await db
+        .update(otpRequests)
+        .set({ supersededAt: new Date() })
+        .where(
+            and(
+                eq(otpRequests.identifier, identifier.toLowerCase()),
+                eq(otpRequests.otpType, type),
+                isNull(otpRequests.usedAt),
+                isNull(otpRequests.supersededAt)
+            )
+        );
 
-    await pool.query(
-        `INSERT INTO otp_requests (identifier, otp_type, otp_hash, expires_at)
-         VALUES ($1, $2, $3, $4)`,
-        [identifier.toLowerCase(), type, otpHash, expiresAt]
-    );
+    await db.insert(otpRequests).values({
+        identifier: identifier.toLowerCase(),
+        otpType: type,
+        otpHash,
+        expiresAt,
+    });
 };
 
 // Verify OTP — returns true if valid, false otherwise. Marks as used on success.
 const verifyOtp = async (identifier, type, inputOtp) => {
-    const { rows } = await pool.query(
-        `SELECT id, otp_hash, expires_at
-         FROM otp_requests
-         WHERE identifier = $1
-           AND otp_type = $2
-           AND used_at IS NULL
-           AND superseded_at IS NULL
-         ORDER BY created_at DESC
-         LIMIT 1`,
-        [identifier.toLowerCase(), type]
-    );
+    const rows = await db
+        .select()
+        .from(otpRequests)
+        .where(
+            and(
+                eq(otpRequests.identifier, identifier.toLowerCase()),
+                eq(otpRequests.otpType, type),
+                isNull(otpRequests.usedAt),
+                isNull(otpRequests.supersededAt)
+            )
+        )
+        .orderBy(desc(otpRequests.createdAt))
+        .limit(1);
 
     if (!rows.length) return false;
 
     const record = rows[0];
 
-    if (new Date(record.expires_at) < new Date()) return false;
+    if (new Date(record.expiresAt) < new Date()) return false;
 
-    const valid = await bcrypt.compare(inputOtp.toString(), record.otp_hash);
+    const valid = await bcrypt.compare(inputOtp.toString(), record.otpHash);
     if (!valid) return false;
 
-    await pool.query(`UPDATE otp_requests SET used_at = NOW() WHERE id = $1`, [record.id]);
+    await db
+        .update(otpRequests)
+        .set({ usedAt: new Date() })
+        .where(eq(otpRequests.id, record.id));
 
     return true;
 };

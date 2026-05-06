@@ -3,7 +3,8 @@ const helmet = require('helmet');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const env = require('./config/env');
-const pool = require('./db/pool');
+const db = require('./db/index');
+const { sql } = require('drizzle-orm');
 const { error: errorFn } = require('./utils/response');
 
 const authRoutes = require('./modules/auth/auth.routes');
@@ -38,7 +39,7 @@ app.use(
 
 app.get('/health', async (req, res) => {
     try {
-        await pool.query('SELECT 1');
+        await db.execute(sql`SELECT 1`);
         res.json({ success: true, data: { status: 'ok', db: 'connected' } });
     } catch (err) {
         console.error('[health] DB error:', err.message);

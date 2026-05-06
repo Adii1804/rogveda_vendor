@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
-const pool = require('../db/pool');
+const db = require('../db/index');
+const { sql } = require('drizzle-orm');
 const env = require('../config/env');
 const { error } = require('../utils/response');
 
@@ -18,15 +19,15 @@ const authenticate = async (req, res, next) => {
         return error(res, 'Invalid or expired token', 401);
     }
 
-    const { rows } = await pool.query(
-        `SELECT s.id as session_id, s.revoked_at,
-                u.id as user_id, u.email, u.login_id, u.account_type,
-                u.status, u.password_reset_required
-         FROM sessions s
-         JOIN users u ON u.id = s.user_id
-         WHERE s.jti = $1 AND s.expires_at > NOW()`,
-        [payload.jti]
+    const result = await db.execute(
+        sql`SELECT s.id as session_id, s.revoked_at,
+                   u.id as user_id, u.email, u.login_id, u.account_type,
+                   u.status, u.password_reset_required
+            FROM sessions s
+            JOIN users u ON u.id = s.user_id
+            WHERE s.jti = ${payload.jti} AND s.expires_at > NOW()`
     );
+    const rows = result.rows;
 
     if (!rows.length || rows[0].revoked_at) {
         return error(res, 'Session expired or revoked', 401);

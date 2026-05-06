@@ -1,67 +1,60 @@
-const pool = require('../../../db/pool');
+const db = require('../../../db/index');
+const { users, vendors, sessions } = require('../../../db/schema');
+const { eq, and, isNull, sql } = require('drizzle-orm');
 const { ok, error } = require('../../../utils/response');
 const { sendDeactivationDecision } = require('../../../utils/email');
 const { insertVendorNotification } = require('../../../utils/notifications');
 
 const activateVendor = async (req, res) => {
-    const { rows } = await pool.query(
-        `UPDATE users u SET status = 'active', updated_at = NOW()
-         FROM vendors v
-         WHERE v.user_id = u.id AND v.id = $1
-         RETURNING u.id, u.email, u.login_id, u.status`,
-        [req.params.id]
+    // UPDATE users FROM vendors pattern — use raw SQL for the cross-table update with RETURNING
+    const result = await db.execute(
+        sql`UPDATE users u SET status = 'active', updated_at = NOW()
+            FROM vendors v
+            WHERE v.user_id = u.id AND v.id = ${req.params.id}
+            RETURNING u.id, u.email, u.login_id, u.status`
     );
-    if (!rows.length) return error(res, 'Vendor not found', 404);
+    if (!result.rows.length) return error(res, 'Vendor not found', 404);
     return ok(res, {
-        ...rows[0],
+        ...result.rows[0],
         message: 'Vendor activated. Credentials email should be shared if not already sent.',
     });
 };
 
 const deactivateVendor = async (req, res) => {
-    const client = await pool.connect();
-    try {
-        await client.query('BEGIN');
-
-        const { rows } = await client.query(
-            `UPDATE users u SET status = 'inactive', updated_at = NOW()
-             FROM vendors v
-             WHERE v.user_id = u.id AND v.id = $1
-             RETURNING u.id, u.status`,
-            [req.params.id]
+    return await db.transaction(async (tx) => {
+        const result = await tx.execute(
+            sql`UPDATE users u SET status = 'inactive', updated_at = NOW()
+                FROM vendors v
+                WHERE v.user_id = u.id AND v.id = ${req.params.id}
+                RETURNING u.id, u.status`
         );
-        if (!rows.length) {
-            await client.query('ROLLBACK');
-            return error(res, 'Vendor not found', 404);
+        if (!result.rows.length) {
+            throw Object.assign(new Error('Vendor not found'), { statusCode: 404 });
         }
 
         // Revoke all active sessions immediately — PRD: session invalidated on next API call
-        await client.query(
-            `UPDATE sessions SET revoked_at = NOW()
-             WHERE user_id = $1 AND revoked_at IS NULL`,
-            [rows[0].id]
-        );
+        await tx
+            .update(sessions)
+            .set({ revokedAt: new Date() })
+            .where(and(eq(sessions.userId, result.rows[0].id), isNull(sessions.revokedAt)));
 
-        await client.query('COMMIT');
         return ok(res, { message: 'Vendor deactivated. All sessions revoked.' });
-    } catch (err) {
-        await client.query('ROLLBACK');
+    }).catch((err) => {
+        if (err.statusCode === 404) return error(res, err.message, 404);
         throw err;
-    } finally {
-        client.release();
-    }
+    });
 };
 
 const getDeactivationRequests = async (req, res) => {
-    const { rows } = await pool.query(
-        `SELECT v.id as request_id, v.id as vendor_id, v.facility_name, v.deactivation_reason,
-                v.deactivation_requested_at, u.email, u.login_id
-         FROM vendors v
-         JOIN users u ON u.id = v.user_id
-         WHERE v.deactivation_requested = TRUE
-         ORDER BY v.deactivation_requested_at ASC`
+    const result = await db.execute(
+        sql`SELECT v.id as request_id, v.id as vendor_id, v.facility_name, v.deactivation_reason,
+                   v.deactivation_requested_at, u.email, u.login_id
+            FROM vendors v
+            JOIN users u ON u.id = v.user_id
+            WHERE v.deactivation_requested = TRUE
+            ORDER BY v.deactivation_requested_at ASC`
     );
-    return ok(res, { requests: rows, total: rows.length });
+    return ok(res, { requests: result.rows, total: result.rows.length });
 };
 
 const reviewDeactivationRequest = async (req, res) => {
@@ -75,56 +68,46 @@ const reviewDeactivationRequest = async (req, res) => {
         return error(res, 'reason is required when rejecting a deactivation request');
     }
 
-    const { rows: vrows } = await pool.query(
-        `SELECT v.id, v.deactivation_requested, v.user_id, u.email
-         FROM vendors v
-         JOIN users u ON u.id = v.user_id
-         WHERE v.id = $1`,
-        [vendorId]
+    const vrows = await db.execute(
+        sql`SELECT v.id, v.deactivation_requested, v.user_id, u.email
+            FROM vendors v
+            JOIN users u ON u.id = v.user_id
+            WHERE v.id = ${vendorId}`
     );
-    if (!vrows.length) return error(res, 'Vendor not found', 404);
-    if (!vrows[0].deactivation_requested) {
+    if (!vrows.rows.length) return error(res, 'Vendor not found', 404);
+    if (!vrows.rows[0].deactivation_requested) {
         return error(res, 'No pending deactivation request for this vendor', 400);
     }
 
-    const email = vrows[0].email;
+    const email = vrows.rows[0].email;
+    const userId = vrows.rows[0].user_id;
 
     if (action === 'approve') {
-        const client = await pool.connect();
-        try {
-            await client.query('BEGIN');
-            await client.query(
-                `UPDATE users u SET status = 'deactivated', updated_at = NOW()
-                 FROM vendors v
-                 WHERE v.user_id = u.id AND v.id = $1`,
-                [vendorId]
+        await db.transaction(async (tx) => {
+            await tx.execute(
+                sql`UPDATE users u SET status = 'deactivated', updated_at = NOW()
+                    FROM vendors v
+                    WHERE v.user_id = u.id AND v.id = ${vendorId}`
             );
-            await client.query(
-                `UPDATE vendors SET
-                    deactivation_requested = FALSE,
-                    deactivation_admin_feedback = NULL,
-                    updated_at = NOW()
-                 WHERE id = $1`,
-                [vendorId]
-            );
-            await client.query(
-                `UPDATE sessions SET revoked_at = NOW()
-                 WHERE user_id = $1 AND revoked_at IS NULL`,
-                [vrows[0].user_id]
-            );
-            await client.query('COMMIT');
-        } catch (err) {
-            await client.query('ROLLBACK');
-            throw err;
-        } finally {
-            client.release();
-        }
+            await tx
+                .update(vendors)
+                .set({
+                    deactivationRequested: false,
+                    deactivationAdminFeedback: null,
+                    updatedAt: new Date(),
+                })
+                .where(eq(vendors.id, vendorId));
+            await tx
+                .update(sessions)
+                .set({ revokedAt: new Date() })
+                .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)));
+        });
 
         await insertVendorNotification(vendorId, {
             type: 'account_deactivated',
             title: 'Account deactivated',
             body: 'Your deactivation request was approved. Your account is now deactivated.',
-            skipEmail: true,  // sendDeactivationDecision below sends the dedicated email
+            skipEmail: true, // sendDeactivationDecision below sends the dedicated email
         });
         await sendDeactivationDecision({
             email,
@@ -135,20 +118,20 @@ const reviewDeactivationRequest = async (req, res) => {
     }
 
     const feedback = String(reason).trim();
-    await pool.query(
-        `UPDATE vendors SET
-            deactivation_requested = FALSE,
-            deactivation_admin_feedback = $1,
-            updated_at = NOW()
-         WHERE id = $2`,
-        [feedback, vendorId]
-    );
+    await db
+        .update(vendors)
+        .set({
+            deactivationRequested: false,
+            deactivationAdminFeedback: feedback,
+            updatedAt: new Date(),
+        })
+        .where(eq(vendors.id, vendorId));
 
     await insertVendorNotification(vendorId, {
         type: 'deactivation_rejected',
         title: 'Deactivation request not approved',
         body: feedback,
-        skipEmail: true,  // sendDeactivationDecision below sends the dedicated email
+        skipEmail: true, // sendDeactivationDecision below sends the dedicated email
     });
     await sendDeactivationDecision({
         email,

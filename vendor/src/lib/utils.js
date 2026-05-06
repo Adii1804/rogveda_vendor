@@ -29,3 +29,9 @@ export function capitalize(str) {
     if (!str) return '';
     return str.charAt(0).toUpperCase() + str.slice(1).replace(/_/g, ' ');
 }
+
+// Returns a short human-readable ID from a UUID — e.g. "1A2B3C4D"
+export function shortId(uuid) {
+    if (!uuid) return '—';
+    return uuid.replace(/-/g, '').slice(0, 8).toUpperCase();
+}

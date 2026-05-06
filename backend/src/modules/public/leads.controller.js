@@ -1,4 +1,6 @@
-const pool = require('../../db/pool');
+const db = require('../../db/index');
+const { vendorLeads } = require('../../db/schema');
+const { eq, desc, sql } = require('drizzle-orm');
 const { ok, error } = require('../../utils/response');
 const { generateOtp, createOtpRequest, verifyOtp } = require('../../utils/otp');
 const { sendOtp, sendLeadConfirmation } = require('../../utils/email');
@@ -27,19 +29,32 @@ const submitLead = async (req, res) => {
     if (!valid) return error(res, 'Invalid or expired OTP. Please request a new one.', 400);
 
     // Check for duplicate
-    const { rows: existing } = await pool.query(
-        `SELECT id FROM vendor_leads WHERE email = $1 ORDER BY created_at DESC LIMIT 1`,
-        [emailClean]
-    );
+    const existing = await db
+        .select({ id: vendorLeads.id })
+        .from(vendorLeads)
+        .where(eq(vendorLeads.email, emailClean))
+        .orderBy(desc(vendorLeads.createdAt))
+        .limit(1);
+
     const isDuplicate = existing.length > 0;
     const duplicateOf = isDuplicate ? existing[0].id : null;
 
-    const { rows } = await pool.query(
-        `INSERT INTO vendor_leads (email, email_verified, status, is_duplicate, duplicate_of)
-         VALUES ($1, TRUE, 'new', $2, $3)
-         RETURNING id, email, status, is_duplicate, created_at`,
-        [emailClean, isDuplicate, duplicateOf]
-    );
+    const rows = await db
+        .insert(vendorLeads)
+        .values({
+            email: emailClean,
+            emailVerified: true,
+            status: 'new',
+            isDuplicate,
+            duplicateOf,
+        })
+        .returning({
+            id: vendorLeads.id,
+            email: vendorLeads.email,
+            status: vendorLeads.status,
+            isDuplicate: vendorLeads.isDuplicate,
+            createdAt: vendorLeads.createdAt,
+        });
 
     await sendLeadConfirmation({ email: emailClean });
 

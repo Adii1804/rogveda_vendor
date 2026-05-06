@@ -1,41 +1,53 @@
-const pool = require('../../../db/pool');
+const db = require('../../../db/index');
+const { vendors, vendorNotifications } = require('../../../db/schema');
+const { eq, and, isNull, desc, sql } = require('drizzle-orm');
 const { ok, error } = require('../../../utils/response');
 
 const listNotifications = async (req, res) => {
-    const { rows: vendor } = await pool.query(`SELECT id FROM vendors WHERE user_id = $1`, [
-        req.user.user_id,
-    ]);
+    const vendor = await db
+        .select({ id: vendors.id })
+        .from(vendors)
+        .where(eq(vendors.userId, req.user.user_id));
     if (!vendor.length) return error(res, 'Vendor profile not found', 404);
 
-    const { rows: unread } = await pool.query(
-        `SELECT COUNT(*)::int AS c FROM vendor_notifications
-         WHERE vendor_id = $1 AND read_at IS NULL`,
-        [vendor[0].id]
+    const unreadResult = await db.execute(
+        sql`SELECT COUNT(*)::int AS c FROM vendor_notifications
+            WHERE vendor_id = ${vendor[0].id} AND read_at IS NULL`
     );
 
-    const { rows } = await pool.query(
-        `SELECT id, type, title, body, read_at, created_at
-         FROM vendor_notifications
-         WHERE vendor_id = $1
-         ORDER BY created_at DESC
-         LIMIT 50`,
-        [vendor[0].id]
-    );
+    const rows = await db
+        .select({
+            id: vendorNotifications.id,
+            type: vendorNotifications.type,
+            title: vendorNotifications.title,
+            body: vendorNotifications.body,
+            readAt: vendorNotifications.readAt,
+            createdAt: vendorNotifications.createdAt,
+        })
+        .from(vendorNotifications)
+        .where(eq(vendorNotifications.vendorId, vendor[0].id))
+        .orderBy(desc(vendorNotifications.createdAt))
+        .limit(50);
 
-    return ok(res, { unread_count: unread[0]?.c || 0, notifications: rows });
+    return ok(res, { unread_count: unreadResult.rows[0]?.c || 0, notifications: rows });
 };
 
 const markAllRead = async (req, res) => {
-    const { rows: vendor } = await pool.query(`SELECT id FROM vendors WHERE user_id = $1`, [
-        req.user.user_id,
-    ]);
+    const vendor = await db
+        .select({ id: vendors.id })
+        .from(vendors)
+        .where(eq(vendors.userId, req.user.user_id));
     if (!vendor.length) return error(res, 'Vendor profile not found', 404);
 
-    await pool.query(
-        `UPDATE vendor_notifications SET read_at = NOW()
-         WHERE vendor_id = $1 AND read_at IS NULL`,
-        [vendor[0].id]
-    );
+    await db
+        .update(vendorNotifications)
+        .set({ readAt: new Date() })
+        .where(
+            and(
+                eq(vendorNotifications.vendorId, vendor[0].id),
+                isNull(vendorNotifications.readAt)
+            )
+        );
 
     return ok(res, { message: 'Notifications marked as read.' });
 };

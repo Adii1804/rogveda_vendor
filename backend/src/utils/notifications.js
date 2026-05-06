@@ -1,4 +1,6 @@
-const pool = require('../db/pool');
+const db = require('../db/index');
+const { vendorNotifications, vendors, users } = require('../db/schema');
+const { eq } = require('drizzle-orm');
 
 // ─── Notification email (lazy-required to avoid circular deps) ────────────────
 
@@ -21,19 +23,23 @@ function getSendNotificationEmail() {
  */
 const insertVendorNotification = async (vendorId, { type, title, body, skipEmail = false }) => {
     // 1. Save in-app notification
-    await pool.query(
-        `INSERT INTO vendor_notifications (vendor_id, type, title, body) VALUES ($1, $2, $3, $4)`,
-        [vendorId, type, title, body || null]
-    );
+    await db.insert(vendorNotifications).values({
+        vendorId,
+        type,
+        title,
+        body: body || null,
+    });
 
     if (skipEmail) return;
 
     // 2. Fetch vendor email (best-effort — never throw)
     try {
-        const { rows } = await pool.query(
-            `SELECT u.email FROM vendors v JOIN users u ON u.id = v.user_id WHERE v.id = $1`,
-            [vendorId]
-        );
+        const rows = await db
+            .select({ email: users.email })
+            .from(vendors)
+            .innerJoin(users, eq(users.id, vendors.userId))
+            .where(eq(vendors.id, vendorId));
+
         if (rows.length && rows[0].email) {
             getSendNotificationEmail()({
                 email: rows[0].email,

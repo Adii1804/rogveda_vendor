@@ -1,4 +1,6 @@
-const pool = require('../../../db/pool');
+const db = require('../../../db/index');
+const { users, serviceCategories, vendorLeads } = require('../../../db/schema');
+const { eq, or, sql } = require('drizzle-orm');
 const { ok, created, error } = require('../../../utils/response');
 const { hash, generateTemp } = require('../../../utils/password');
 const { createVendorAccount, getVendors, getVendorById } = require('./vendors.queries');
@@ -19,30 +21,30 @@ const createVendor = async (req, res) => {
 
     const emailClean = email.trim().toLowerCase();
 
-    const { rows: existing } = await pool.query(
-        `SELECT id FROM users WHERE email = $1 OR login_id = $2`,
-        [emailClean, loginId]
+    const existing = await db.execute(
+        sql`SELECT id FROM users WHERE email = ${emailClean} OR login_id = ${loginId}`
     );
-    if (existing.length) {
+    if (existing.rows.length) {
         return error(res, 'An account with this email or login ID already exists');
     }
 
-    const { rows: category } = await pool.query(
-        `SELECT id FROM service_categories WHERE id = $1 AND is_active = TRUE`,
-        [service_category_id]
-    );
+    const category = await db
+        .select({ id: serviceCategories.id })
+        .from(serviceCategories)
+        .where(
+            sql`${serviceCategories.id} = ${service_category_id} AND ${serviceCategories.isActive} = TRUE`
+        );
     if (!category.length) {
         return error(res, 'Invalid or inactive service category');
     }
 
+    // NOTE: created_vendor_user_id check removed — column is being dropped
     if (lead_id) {
-        const { rows: lead } = await pool.query(
-            `SELECT id, status, created_vendor_user_id FROM vendor_leads WHERE id = $1`,
-            [lead_id]
-        );
+        const lead = await db
+            .select({ id: vendorLeads.id, status: vendorLeads.status })
+            .from(vendorLeads)
+            .where(eq(vendorLeads.id, lead_id));
         if (!lead.length) return error(res, 'Lead not found');
-        if (lead[0].created_vendor_user_id)
-            return error(res, 'A vendor account already exists for this lead');
     }
 
     // PRD: 6-digit numeric temp password
@@ -60,10 +62,10 @@ const createVendor = async (req, res) => {
         leadId: lead_id || null,
     });
 
-    await pool.query(`UPDATE users SET temp_password_plain = $1 WHERE id = $2`, [
-        tempPassword,
-        result.user.id,
-    ]);
+    await db
+        .update(users)
+        .set({ tempPasswordPlain: tempPassword })
+        .where(eq(users.id, result.user.id));
 
     return created(res, {
         vendor_id: result.vendorId,

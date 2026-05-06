@@ -1,4 +1,6 @@
-const pool = require('../../../db/pool');
+const db = require('../../../db/index');
+const { vendors, users } = require('../../../db/schema');
+const { eq, sql } = require('drizzle-orm');
 const { ok, error } = require('../../../utils/response');
 const { insertVendorNotification } = require('../../../utils/notifications');
 const { sendProfileDecision } = require('../../../utils/email');
@@ -15,18 +17,17 @@ const reviewProfile = async (req, res) => {
         return error(res, 'Rejection reason is required');
     }
 
-    const { rows } = await pool.query(
-        `SELECT v.id, v.profile_status, v.kyc_status, v.facility_name,
-                u.email AS vendor_email
-         FROM vendors v
-         JOIN users u ON u.id = v.user_id
-         WHERE v.id = $1`,
-        [vendorId]
+    const result = await db.execute(
+        sql`SELECT v.id, v.profile_status, v.kyc_status, v.facility_name,
+                   u.email AS vendor_email
+            FROM vendors v
+            JOIN users u ON u.id = v.user_id
+            WHERE v.id = ${vendorId}`
     );
 
-    if (!rows.length) return error(res, 'Vendor not found', 404);
+    if (!result.rows.length) return error(res, 'Vendor not found', 404);
 
-    const vendor = rows[0];
+    const vendor = result.rows[0];
 
     if (vendor.profile_status !== 'under_review') {
         return error(res, `Cannot review profile with status: ${vendor.profile_status}`);
@@ -36,23 +37,22 @@ const reviewProfile = async (req, res) => {
         return error(res, 'Cannot approve profile — vendor KYC is not complete');
     }
 
-    const { rows: updated } = await pool.query(
-        `UPDATE vendors SET
-            profile_status        = $1,
-            profile_approved_by   = $2,
-            profile_approved_at   = $3,
-            profile_rejection_reason = $4,
-            updated_at            = NOW()
-         WHERE id = $5
-         RETURNING id, profile_status, profile_approved_at, profile_rejection_reason`,
-        [
-            action === 'approved' ? 'approved' : 'rejected',
-            action === 'approved' ? req.user.user_id : null,
-            action === 'approved' ? new Date() : null,
-            action === 'rejected' ? rejection_reason : null,
-            vendorId,
-        ]
-    );
+    const updated = await db
+        .update(vendors)
+        .set({
+            profileStatus: action === 'approved' ? 'approved' : 'rejected',
+            profileApprovedBy: action === 'approved' ? req.user.user_id : null,
+            profileApprovedAt: action === 'approved' ? new Date() : null,
+            profileRejectionReason: action === 'rejected' ? rejection_reason : null,
+            updatedAt: new Date(),
+        })
+        .where(eq(vendors.id, vendorId))
+        .returning({
+            id: vendors.id,
+            profileStatus: vendors.profileStatus,
+            profileApprovedAt: vendors.profileApprovedAt,
+            profileRejectionReason: vendors.profileRejectionReason,
+        });
 
     // In-app notification (skipEmail=true because sendProfileDecision below sends a richer email)
     if (action === 'approved') {

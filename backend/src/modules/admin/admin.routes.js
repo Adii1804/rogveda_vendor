@@ -3,6 +3,7 @@ const { authenticate } = require('../../middleware/auth');
 const { requireAdmin } = require('../../middleware/requireAdmin');
 const { getDashboard } = require('./dashboard.controller');
 const { listLeads, getLead, updateLeadStatus } = require('./leads/leads.controller');
+const { getLeadNotes, addLeadNote } = require('./leads/notes.controller');
 const { createVendor, listVendors, getVendor } = require('./vendors/vendors.controller');
 const { reviewProfile } = require('./vendors/profile.controller');
 const {
@@ -28,6 +29,8 @@ router.get('/dashboard', getDashboard);
 router.get('/leads', listLeads);
 router.get('/leads/:id', getLead);
 router.put('/leads/:id', updateLeadStatus);
+router.get('/leads/:id/notes', getLeadNotes);
+router.post('/leads/:id/notes', addLeadNote);
 
 router.post('/vendors', createVendor);
 router.get('/vendors/deactivation-requests', getDeactivationRequests);

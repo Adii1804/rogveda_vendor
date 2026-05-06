@@ -41,9 +41,7 @@ const updateLeadStatus = async (req, res) => {
         return error(res, 'This lead is approved and its status can no longer be changed');
     }
 
-    if (lead.created_vendor_user_id && status === 'rejected') {
-        return error(res, 'Cannot reject a lead that already has a vendor account created');
-    }
+    // NOTE: created_vendor_user_id rejection guard removed — column is being dropped
 
     const updated = await updateLead(req.params.id, req.body, req.user.user_id);
     return ok(res, updated);

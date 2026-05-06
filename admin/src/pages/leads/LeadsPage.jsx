@@ -85,14 +85,13 @@ export default function LeadsPage() {
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Email</th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Duplicate</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Linked Vendor</th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Submitted</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {leads.length === 0 ? (
                                 <tr>
-                                    <td colSpan={5} className="py-12 text-center text-sm text-gray-400">
+                                    <td colSpan={4} className="py-12 text-center text-sm text-gray-400">
                                         No leads found
                                     </td>
                                 </tr>
@@ -120,18 +119,6 @@ export default function LeadsPage() {
                                                 <span className="text-xs font-medium text-amber-600">Duplicate</span>
                                             ) : (
                                                 <span className="text-xs text-gray-400">—</span>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 text-gray-600 text-xs">
-                                            {lead.created_vendor_email ? (
-                                                <Link
-                                                    to={`/vendors`}
-                                                    className="text-blue-600 hover:underline"
-                                                >
-                                                    {lead.created_vendor_email}
-                                                </Link>
-                                            ) : (
-                                                <span className="text-gray-400">—</span>
                                             )}
                                         </td>
                                         <td className="px-4 py-3 text-gray-500">{formatDate(lead.created_at)}</td>

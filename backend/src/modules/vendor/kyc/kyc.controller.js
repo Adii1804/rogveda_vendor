@@ -1,35 +1,42 @@
 const { randomUUID: uuidv4 } = require('crypto');
-const pool = require('../../../db/pool');
+const db = require('../../../db/index');
+const { vendors, vendorKycChecklists, vendorKycDocuments } = require('../../../db/schema');
+const { eq, and, sql } = require('drizzle-orm');
 const { ok, created, error } = require('../../../utils/response');
 const { uploadKycDocument, getSignedUrl } = require('../../../utils/storage');
 
 // GET /vendor/kyc/checklist — what documents does this vendor need to upload?
 const getChecklist = async (req, res) => {
-    const { rows: vendor } = await pool.query(
-        `SELECT v.id, v.service_category_id, v.kyc_status FROM vendors v WHERE v.user_id = $1`,
-        [req.user.user_id]
-    );
-    if (!vendor.length) return error(res, 'Vendor profile not found', 404);
+    const vendorRows = await db
+        .select({
+            id: vendors.id,
+            serviceCategoryId: vendors.serviceCategoryId,
+            kycStatus: vendors.kycStatus,
+        })
+        .from(vendors)
+        .where(eq(vendors.userId, req.user.user_id));
+    if (!vendorRows.length) return error(res, 'Vendor profile not found', 404);
 
-    const { rows: checklist } = await pool.query(
-        `SELECT c.id, c.document_name, c.instructions, c.is_mandatory, c.has_renewal, c.display_order,
-                d.id as document_id, d.status as document_status,
-                d.original_file_name, d.uploaded_at, d.rejection_reason, d.renewal_date
-         FROM vendor_kyc_checklists c
-         LEFT JOIN vendor_kyc_documents d
-             ON d.checklist_item_id = c.id AND d.vendor_id = $1
-         WHERE c.service_category_id = $2 AND c.is_active = TRUE
-         ORDER BY c.display_order ASC`,
-        [vendor[0].id, vendor[0].service_category_id]
+    const vendor = vendorRows[0];
+
+    const checklist = await db.execute(
+        sql`SELECT c.id, c.document_name, c.instructions, c.is_mandatory, c.has_renewal, c.display_order,
+                   d.id as document_id, d.status as document_status,
+                   d.original_file_name, d.uploaded_at, d.rejection_reason, d.renewal_date
+            FROM vendor_kyc_checklists c
+            LEFT JOIN vendor_kyc_documents d
+                ON d.checklist_item_id = c.id AND d.vendor_id = ${vendor.id}
+            WHERE c.service_category_id = ${vendor.serviceCategoryId} AND c.is_active = TRUE
+            ORDER BY c.display_order ASC`
     );
 
-    const mapped = checklist.map((row) => ({
+    const mapped = checklist.rows.map((row) => ({
         ...row,
         description: row.instructions,
     }));
 
     return ok(res, {
-        kyc_status: vendor[0].kyc_status,
+        kyc_status: vendor.kycStatus,
         checklist: mapped,
     });
 };
@@ -46,25 +53,37 @@ const uploadDocument = async (req, res) => {
     const { checklist_item_id } = req.body;
     if (!checklist_item_id) return error(res, 'checklist_item_id is required');
 
-    const { rows: vendor } = await pool.query(
-        `SELECT v.id, v.service_category_id FROM vendors v WHERE v.user_id = $1`,
-        [req.user.user_id]
-    );
-    if (!vendor.length) return error(res, 'Vendor profile not found', 404);
+    const vendorRows = await db
+        .select({ id: vendors.id, serviceCategoryId: vendors.serviceCategoryId })
+        .from(vendors)
+        .where(eq(vendors.userId, req.user.user_id));
+    if (!vendorRows.length) return error(res, 'Vendor profile not found', 404);
+
+    const vendor = vendorRows[0];
 
     // Verify checklist item belongs to this vendor's category
-    const { rows: checklistItem } = await pool.query(
-        `SELECT id FROM vendor_kyc_checklists
-         WHERE id = $1 AND service_category_id = $2 AND is_active = TRUE`,
-        [checklist_item_id, vendor[0].service_category_id]
-    );
+    const checklistItem = await db
+        .select({ id: vendorKycChecklists.id })
+        .from(vendorKycChecklists)
+        .where(
+            and(
+                eq(vendorKycChecklists.id, checklist_item_id),
+                eq(vendorKycChecklists.serviceCategoryId, vendor.serviceCategoryId),
+                eq(vendorKycChecklists.isActive, true)
+            )
+        );
     if (!checklistItem.length) return error(res, 'Invalid checklist item for your vendor category');
 
     // Check if document already exists (update flow — re-upload after rejection)
-    const { rows: existing } = await pool.query(
-        `SELECT id, status FROM vendor_kyc_documents WHERE vendor_id = $1 AND checklist_item_id = $2`,
-        [vendor[0].id, checklist_item_id]
-    );
+    const existing = await db
+        .select({ id: vendorKycDocuments.id, status: vendorKycDocuments.status })
+        .from(vendorKycDocuments)
+        .where(
+            and(
+                eq(vendorKycDocuments.vendorId, vendor.id),
+                eq(vendorKycDocuments.checklistItemId, checklist_item_id)
+            )
+        );
 
     if (existing.length && existing[0].status === 'approved') {
         return error(res, 'This document is already approved and cannot be replaced');
@@ -75,7 +94,7 @@ const uploadDocument = async (req, res) => {
 
     const documentId = existing.length ? existing[0].id : uuidv4();
     const storagePath = await uploadKycDocument({
-        vendorId: vendor[0].id,
+        vendorId: vendor.id,
         documentId,
         fileBuffer: req.file.buffer,
         mimeType: req.file.mimetype,
@@ -85,63 +104,67 @@ const uploadDocument = async (req, res) => {
     let docRow;
     if (existing.length) {
         // Re-upload: reset status back to uploaded
-        const { rows } = await pool.query(
-            `UPDATE vendor_kyc_documents SET
-                original_file_name = $1, storage_path = $2, file_size_bytes = $3,
-                mime_type = $4, status = 'uploaded', rejection_reason = NULL,
-                reviewed_by = NULL, reviewed_at = NULL, updated_at = NOW()
-             WHERE id = $5 RETURNING *`,
-            [req.file.originalname, storagePath, req.file.size, req.file.mimetype, documentId]
-        );
+        const rows = await db
+            .update(vendorKycDocuments)
+            .set({
+                originalFileName: req.file.originalname,
+                storagePath,
+                fileSizeBytes: req.file.size,
+                mimeType: req.file.mimetype,
+                status: 'uploaded',
+                rejectionReason: null,
+                reviewedBy: null,
+                reviewedAt: null,
+                updatedAt: new Date(),
+            })
+            .where(eq(vendorKycDocuments.id, documentId))
+            .returning();
         docRow = rows[0];
     } else {
-        const { rows } = await pool.query(
-            `INSERT INTO vendor_kyc_documents
-                (id, vendor_id, checklist_item_id, original_file_name, storage_path, file_size_bytes, mime_type, status)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, 'uploaded')
-             RETURNING *`,
-            [
-                documentId,
-                vendor[0].id,
-                checklist_item_id,
-                req.file.originalname,
+        const rows = await db
+            .insert(vendorKycDocuments)
+            .values({
+                id: documentId,
+                vendorId: vendor.id,
+                checklistItemId: checklist_item_id,
+                originalFileName: req.file.originalname,
                 storagePath,
-                req.file.size,
-                req.file.mimetype,
-            ]
-        );
+                fileSizeBytes: req.file.size,
+                mimeType: req.file.mimetype,
+                status: 'uploaded',
+            })
+            .returning();
         docRow = rows[0];
     }
 
     // Update vendor kyc_status to in_progress once they start uploading
-    await pool.query(
-        `UPDATE vendors SET kyc_status = 'in_progress', updated_at = NOW()
-         WHERE id = $1 AND kyc_status = 'pending'`,
-        [vendor[0].id]
-    );
+    await db
+        .update(vendors)
+        .set({ kycStatus: 'in_progress', updatedAt: new Date() })
+        .where(and(eq(vendors.id, vendor.id), eq(vendors.kycStatus, 'pending')));
 
     return created(res, { document: docRow });
 };
 
 // GET /vendor/kyc/documents — my uploaded documents with signed URLs
 const getDocuments = async (req, res) => {
-    const { rows: vendor } = await pool.query(`SELECT id FROM vendors WHERE user_id = $1`, [
-        req.user.user_id,
-    ]);
-    if (!vendor.length) return error(res, 'Vendor profile not found', 404);
+    const vendorRows = await db
+        .select({ id: vendors.id })
+        .from(vendors)
+        .where(eq(vendors.userId, req.user.user_id));
+    if (!vendorRows.length) return error(res, 'Vendor profile not found', 404);
 
-    const { rows } = await pool.query(
-        `SELECT d.*, c.document_name, c.is_mandatory
-         FROM vendor_kyc_documents d
-         JOIN vendor_kyc_checklists c ON c.id = d.checklist_item_id
-         WHERE d.vendor_id = $1
-         ORDER BY c.display_order`,
-        [vendor[0].id]
+    const result = await db.execute(
+        sql`SELECT d.*, c.document_name, c.is_mandatory
+            FROM vendor_kyc_documents d
+            JOIN vendor_kyc_checklists c ON c.id = d.checklist_item_id
+            WHERE d.vendor_id = ${vendorRows[0].id}
+            ORDER BY c.display_order`
     );
 
     // Generate signed URLs for each document
     const documents = await Promise.all(
-        rows.map(async (doc) => {
+        result.rows.map(async (doc) => {
             try {
                 const signed_url = await getSignedUrl(doc.storage_path);
                 return { ...doc, signed_url };
@@ -156,54 +179,64 @@ const getDocuments = async (req, res) => {
 
 // POST /vendor/kyc/submit — submit all uploaded docs for review
 const submitKyc = async (req, res) => {
-    const { rows: vendor } = await pool.query(
-        `SELECT v.id, v.service_category_id, v.kyc_status FROM vendors v WHERE v.user_id = $1`,
-        [req.user.user_id]
-    );
-    if (!vendor.length) return error(res, 'Vendor profile not found', 404);
+    const vendorRows = await db
+        .select({
+            id: vendors.id,
+            serviceCategoryId: vendors.serviceCategoryId,
+            kycStatus: vendors.kycStatus,
+        })
+        .from(vendors)
+        .where(eq(vendors.userId, req.user.user_id));
+    if (!vendorRows.length) return error(res, 'Vendor profile not found', 404);
 
-    if (vendor[0].kyc_status === 'complete') {
+    const vendor = vendorRows[0];
+
+    if (vendor.kycStatus === 'complete') {
         return error(res, 'KYC is already complete');
     }
 
-    const { rows: pendingUpload } = await pool.query(
-        `SELECT 1 FROM vendor_kyc_documents WHERE vendor_id = $1 AND status = 'uploaded' LIMIT 1`,
-        [vendor[0].id]
-    );
-    if (vendor[0].kyc_status === 'under_review' && !pendingUpload.length) {
+    const pendingUpload = await db
+        .select({ id: vendorKycDocuments.id })
+        .from(vendorKycDocuments)
+        .where(
+            and(eq(vendorKycDocuments.vendorId, vendor.id), eq(vendorKycDocuments.status, 'uploaded'))
+        )
+        .limit(1);
+
+    if (vendor.kycStatus === 'under_review' && !pendingUpload.length) {
         return error(res, 'KYC is already under review');
     }
 
     // Check all mandatory items have been uploaded
-    const { rows: missing } = await pool.query(
-        `SELECT c.document_name FROM vendor_kyc_checklists c
-         WHERE c.service_category_id = $1 AND c.is_mandatory = TRUE AND c.is_active = TRUE
-           AND NOT EXISTS (
-               SELECT 1 FROM vendor_kyc_documents d
-               WHERE d.checklist_item_id = c.id AND d.vendor_id = $2
-                 AND d.status IN ('uploaded', 'under_review', 'approved')
-           )`,
-        [vendor[0].service_category_id, vendor[0].id]
+    const missingResult = await db.execute(
+        sql`SELECT c.document_name FROM vendor_kyc_checklists c
+            WHERE c.service_category_id = ${vendor.serviceCategoryId} AND c.is_mandatory = TRUE AND c.is_active = TRUE
+              AND NOT EXISTS (
+                  SELECT 1 FROM vendor_kyc_documents d
+                  WHERE d.checklist_item_id = c.id AND d.vendor_id = ${vendor.id}
+                    AND d.status IN ('uploaded', 'under_review', 'approved')
+              )`
     );
 
-    if (missing.length) {
+    if (missingResult.rows.length) {
         return error(
             res,
-            `Please upload all mandatory documents before submitting: ${missing.map((m) => m.document_name).join(', ')}`
+            `Please upload all mandatory documents before submitting: ${missingResult.rows.map((m) => m.document_name).join(', ')}`
         );
     }
 
     // Move all 'uploaded' documents to 'under_review'
-    await pool.query(
-        `UPDATE vendor_kyc_documents SET status = 'under_review', updated_at = NOW()
-         WHERE vendor_id = $1 AND status = 'uploaded'`,
-        [vendor[0].id]
-    );
+    await db
+        .update(vendorKycDocuments)
+        .set({ status: 'under_review', updatedAt: new Date() })
+        .where(
+            and(eq(vendorKycDocuments.vendorId, vendor.id), eq(vendorKycDocuments.status, 'uploaded'))
+        );
 
-    await pool.query(
-        `UPDATE vendors SET kyc_status = 'under_review', updated_at = NOW() WHERE id = $1`,
-        [vendor[0].id]
-    );
+    await db
+        .update(vendors)
+        .set({ kycStatus: 'under_review', updatedAt: new Date() })
+        .where(eq(vendors.id, vendor.id));
 
     return ok(res, {
         message: 'KYC documents submitted for review. You will be notified once reviewed.',

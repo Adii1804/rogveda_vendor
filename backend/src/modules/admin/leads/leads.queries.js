@@ -1,81 +1,65 @@
-const pool = require('../../../db/pool');
+const db = require('../../../db/index');
+const { vendorLeads } = require('../../../db/schema');
+const { eq, sql } = require('drizzle-orm');
+
+// NOTE: LEFT JOIN on created_vendor_user_id removed — column is being dropped
 
 const getLeads = async ({ status, search, page = 1, limit = 20 }) => {
     const offset = (page - 1) * limit;
+
     const conditions = [];
-    const params = [];
-
-    if (status) {
-        params.push(status);
-        conditions.push(`vl.status = $${params.length}`);
-    }
-
+    if (status) conditions.push(sql`vl.status = ${status}`);
     if (search) {
-        params.push(`%${search}%`);
-        conditions.push(`vl.email ILIKE $${params.length}`);
+        const pattern = `%${search}%`;
+        conditions.push(sql`vl.email ILIKE ${pattern}`);
     }
 
-    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const whereClause =
+        conditions.length > 0
+            ? sql`WHERE ${sql.join(conditions, sql` AND `)}`
+            : sql``;
 
-    params.push(limit, offset);
-
-    const { rows } = await pool.query(
-        `SELECT vl.*,
-                u.email  AS created_vendor_email,
-                u.login_id AS created_vendor_login_id
-         FROM vendor_leads vl
-         LEFT JOIN users u ON u.id = vl.created_vendor_user_id
-         ${where}
-         ORDER BY vl.created_at DESC
-         LIMIT $${params.length - 1} OFFSET $${params.length}`,
-        params
+    const result = await db.execute(
+        sql`SELECT vl.*
+            FROM vendor_leads vl
+            ${whereClause}
+            ORDER BY vl.created_at DESC
+            LIMIT ${limit} OFFSET ${offset}`
     );
 
-    const countParams = params.slice(0, params.length - 2);
-    const { rows: countRows } = await pool.query(
-        `SELECT COUNT(*) FROM vendor_leads vl ${where}`,
-        countParams
+    const countResult = await db.execute(
+        sql`SELECT COUNT(*) FROM vendor_leads vl ${whereClause}`
     );
 
-    return { leads: rows, total: parseInt(countRows[0].count) };
+    return { leads: result.rows, total: parseInt(countResult.rows[0].count) };
 };
 
 const getLeadById = async (id) => {
-    const { rows } = await pool.query(
-        `SELECT vl.*,
-                u.email    AS created_vendor_email,
-                u.login_id AS created_vendor_login_id
-         FROM vendor_leads vl
-         LEFT JOIN users u ON u.id = vl.created_vendor_user_id
-         WHERE vl.id = $1`,
-        [id]
-    );
+    const rows = await db
+        .select()
+        .from(vendorLeads)
+        .where(eq(vendorLeads.id, id));
     return rows[0] || null;
 };
 
 const updateLead = async (id, fields, updatedBy) => {
-    const allowed = ['status', 'notes', 'callback_reminder_at'];
-    const updates = [];
-    const params = [];
+    const setValues = {};
 
-    for (const key of allowed) {
-        if (fields[key] !== undefined) {
-            params.push(fields[key]);
-            updates.push(`${key} = $${params.length}`);
-        }
-    }
+    // Accept both camelCase and snake_case keys
+    if (fields.status !== undefined)               setValues.status = fields.status;
+    if (fields.notes !== undefined)                setValues.notes = fields.notes;
+    if (fields.callback_reminder_at !== undefined) setValues.callbackReminderAt = fields.callback_reminder_at;
 
-    if (!updates.length) return null;
+    if (!Object.keys(setValues).length) return null;
 
-    params.push(updatedBy, id);
+    setValues.updatedBy = updatedBy;
+    setValues.updatedAt = new Date();
 
-    const { rows } = await pool.query(
-        `UPDATE vendor_leads
-         SET ${updates.join(', ')}, updated_by = $${params.length - 1}, updated_at = NOW()
-         WHERE id = $${params.length}
-         RETURNING *`,
-        params
-    );
+    const rows = await db
+        .update(vendorLeads)
+        .set(setValues)
+        .where(eq(vendorLeads.id, id))
+        .returning();
 
     return rows[0] || null;
 };
