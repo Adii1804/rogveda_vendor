@@ -4,7 +4,7 @@ const { getLeads, getLeadById, updateLead } = require('./leads.queries');
 const VALID_STATUSES = ['new', 'contacted', 'under_review', 'approved', 'rejected'];
 
 const listLeads = async (req, res) => {
-    const { status, search, page, limit } = req.query;
+    const { status, search, duplicates, page, limit } = req.query;
 
     if (status && !VALID_STATUSES.includes(status)) {
         return error(res, `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`);
@@ -13,6 +13,7 @@ const listLeads = async (req, res) => {
     const result = await getLeads({
         status,
         search,
+        duplicates: duplicates === 'true',
         page: parseInt(page) || 1,
         limit: Math.min(parseInt(limit) || 20, 100),
     });

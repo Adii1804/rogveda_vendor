@@ -18,16 +18,18 @@ export default function LeadsPage() {
     const [status, setStatus] = useState('');
     const [search, setSearch] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [duplicatesOnly, setDuplicatesOnly] = useState(false);
     const searchTimerRef = useRef(null);
 
     const { data, isLoading } = useQuery({
-        queryKey: ['leads', page, status, debouncedSearch],
+        queryKey: ['leads', page, status, debouncedSearch, duplicatesOnly],
         queryFn: () =>
             getLeads({
                 page,
                 limit: PAGE_SIZE,
                 ...(status && { status }),
                 ...(debouncedSearch && { search: debouncedSearch }),
+                ...(duplicatesOnly && { duplicates: 'true' }),
             }),
     });
 
@@ -73,6 +75,17 @@ export default function LeadsPage() {
                         </option>
                     ))}
                 </Select>
+                <button
+                    onClick={() => { setDuplicatesOnly((v) => !v); setPage(1); }}
+                    className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                        duplicatesOnly
+                            ? 'border-amber-400 bg-amber-50 text-amber-700'
+                            : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'
+                    }`}
+                >
+                    <Copy className="h-3.5 w-3.5" />
+                    Duplicates{duplicatesOnly ? ' ✕' : ''}
+                </button>
             </div>
 
             <div className="mt-4 rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">

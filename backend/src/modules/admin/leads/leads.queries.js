@@ -2,11 +2,12 @@ const db = require('../../../db/index');
 const { vendorLeads } = require('../../../db/schema');
 const { eq, sql } = require('drizzle-orm');
 
-const getLeads = async ({ status, search, page = 1, limit = 20 }) => {
+const getLeads = async ({ status, search, duplicates, page = 1, limit = 20 }) => {
     const offset = (page - 1) * limit;
 
     const conditions = [];
     if (status) conditions.push(sql`vl.status = ${status}`);
+    if (duplicates) conditions.push(sql`vl.is_duplicate = TRUE`);
     if (search) {
         const pattern = `%${search}%`;
         conditions.push(sql`vl.email ILIKE ${pattern}`);
@@ -15,11 +16,16 @@ const getLeads = async ({ status, search, page = 1, limit = 20 }) => {
     const whereClause =
         conditions.length > 0 ? sql`WHERE ${sql.join(conditions, sql` AND `)}` : sql``;
 
+    // When filtering duplicates, sort by email so the same address groups together
+    const orderClause = duplicates
+        ? sql`ORDER BY vl.email ASC, vl.created_at ASC`
+        : sql`ORDER BY vl.created_at DESC`;
+
     const result = await db.execute(
         sql`SELECT vl.*
             FROM vendor_leads vl
             ${whereClause}
-            ORDER BY vl.created_at DESC
+            ${orderClause}
             LIMIT ${limit} OFFSET ${offset}`
     );
 
