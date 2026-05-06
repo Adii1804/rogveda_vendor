@@ -147,7 +147,6 @@ function LeadDetailContent({ id }) {
             <div className="mb-6 flex items-start justify-between flex-wrap gap-3">
                 <div>
                     <h1 className="text-xl font-semibold text-gray-900">{lead.email}</h1>
-                    <p className="mt-0.5 text-sm text-gray-500">Ref #{shortId(lead.id)}</p>
                 </div>
                 <Badge status={lead.status} />
             </div>
@@ -161,10 +160,6 @@ function LeadDetailContent({ id }) {
                     </CardHeader>
                     <CardBody>
                         <InfoRow label="Email" value={lead.email} />
-                        <InfoRow
-                            label="Email Verified"
-                            value={lead.email_verified ? '✓ Yes' : '✗ No'}
-                        />
                         <InfoRow label="Submitted"    value={formatDateTime(lead.created_at)} />
                         <InfoRow label="Last Updated" value={formatDateTime(lead.updated_at)} />
                         {lead.is_duplicate && (
@@ -249,25 +244,27 @@ function LeadDetailContent({ id }) {
                             </div>
                         )}
 
-                        {/* Add Note form — available even on approved leads */}
-                        <div className="pt-3 border-t border-gray-100 flex flex-col gap-3">
-                            <Textarea
-                                label="Add a note"
-                                placeholder={`Write a note about this lead… (will be tagged as "${status.replace(/_/g, ' ')}")`}
-                                rows={3}
-                                value={noteText}
-                                onChange={(e) => setNoteText(e.target.value)}
-                            />
-                            <div className="flex justify-end">
-                                <Button
-                                    onClick={handleAddNote}
-                                    loading={noteMut.isPending}
-                                    disabled={!noteText.trim()}
-                                >
-                                    Add Note
-                                </Button>
+                        {/* Add Note form — only while lead is not yet approved */}
+                        {!isApproved && (
+                            <div className="pt-3 border-t border-gray-100 flex flex-col gap-3">
+                                <Textarea
+                                    label="Add a note"
+                                    placeholder={`Write a note… (tagged as "${status.replace(/_/g, ' ')}")`}
+                                    rows={3}
+                                    value={noteText}
+                                    onChange={(e) => setNoteText(e.target.value)}
+                                />
+                                <div className="flex justify-end">
+                                    <Button
+                                        onClick={handleAddNote}
+                                        loading={noteMut.isPending}
+                                        disabled={!noteText.trim()}
+                                    >
+                                        Add Note
+                                    </Button>
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </CardBody>
                 </Card>
 
