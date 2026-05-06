@@ -13,7 +13,8 @@ import { useToast } from '@/components/ui/Toast';
 import { formatDateTime, shortId } from '@/lib/utils';
 import { useState, useEffect, useMemo } from 'react';
 
-const STATUSES = ['new', 'contacted', 'under_review', 'approved', 'rejected'];
+// 'new' is the automatic initial status when a lead arrives — admins never set it manually
+const STATUSES = ['contacted', 'under_review', 'approved', 'rejected'];
 
 function InfoRow({ label, value }) {
     return (
