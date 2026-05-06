@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 // ─── Login schema ─────────────────────────────────────────────────────────────
 
 const loginSchema = z.object({
-    login_id: z.string().regex(/^\d{10}$/, 'Login ID must be exactly 10 digits'),
+    login_id: z.string().min(1, 'Login ID or email is required'),
     password: z.string().regex(/^\d{6}$/, 'Password must be exactly 6 digits'),
 });
 
@@ -295,11 +295,9 @@ export default function LoginPage() {
                         <div className="space-y-4">
                             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                                 <Input
-                                    label="Login ID"
-                                    inputMode="numeric"
+                                    label="Login ID or Email"
                                     autoComplete="username"
-                                    maxLength={10}
-                                    placeholder="10-digit ID"
+                                    placeholder="10-digit ID or email address"
                                     error={errors.login_id?.message}
                                     {...register('login_id')}
                                 />
