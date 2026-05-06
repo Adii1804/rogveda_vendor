@@ -16,7 +16,7 @@ const schema = z.object({
     email: z.string().email('Valid email is required'),
     mobile_number: z.string().regex(/^\d{10}$/, 'Must be exactly 10 digits'),
     service_category_id: z.string().uuid('Please select a category'),
-    facility_name: z.string().optional(),
+    facility_name: z.string().min(1, 'Facility name is required'),
     login_id: z.string().optional(),
     lead_id: z.string().optional(),
 });
@@ -141,7 +141,7 @@ export function CreateVendorModal({ open, onClose }) {
                     <div>
                         <div className="flex items-center justify-between mb-1.5">
                             <label className="text-sm font-medium text-gray-700">
-                                Email *
+                                Email <span className="text-red-500">*</span>
                             </label>
                             <button
                                 type="button"
@@ -210,8 +210,8 @@ export function CreateVendorModal({ open, onClose }) {
                     </Select>
 
                     <Input
-                        label="Facility Name"
-                        placeholder="Apollo Hospital (optional)"
+                        label="Facility Name *"
+                        placeholder="Apollo Hospital"
                         error={errors.facility_name?.message}
                         {...register('facility_name')}
                     />

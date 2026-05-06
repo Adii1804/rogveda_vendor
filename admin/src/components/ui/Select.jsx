@@ -7,7 +7,20 @@ export const Select = forwardRef(function Select(
 ) {
     return (
         <div className="flex flex-col gap-1">
-            {label && <label className="text-sm font-medium text-gray-700">{label}</label>}
+            {label && (
+                <label className="text-sm font-medium text-gray-700">
+                    {label.split('*').map((part, i, arr) =>
+                        i < arr.length - 1 ? (
+                            <span key={i}>
+                                {part}
+                                <span className="text-red-500">*</span>
+                            </span>
+                        ) : (
+                            part
+                        )
+                    )}
+                </label>
+            )}
             <select
                 ref={ref}
                 {...props}
