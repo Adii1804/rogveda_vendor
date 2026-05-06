@@ -426,6 +426,67 @@ const sendProfileDecision = async ({ email, approved, facilityName, reason }) =>
     });
 };
 
+const sendLeadDecision = async ({ email, approved, note }) => {
+    const subject = approved
+        ? 'Great news — your Rogveda application has been approved!'
+        : 'An update on your Rogveda application';
+
+    const html = layout(
+        subject,
+        approved
+            ? `
+        <h2 style="margin:0 0 8px;font-size:20px;color:#111827;">Your application has been approved 🎉</h2>
+        <p style="margin:0 0 16px;font-size:15px;color:#374151;">
+            Thank you for your interest in joining Rogveda as a vendor. We are pleased to inform you that
+            your application has been <strong>approved</strong>.
+        </p>
+        ${
+            note
+                ? `
+        <div style="background:#f0fdf4;border-left:4px solid #22c55e;border-radius:4px;padding:12px 16px;margin:0 0 24px;">
+            <p style="margin:0 0 4px;font-size:12px;font-weight:600;color:#166534;text-transform:uppercase;letter-spacing:0.5px;">Message from our team</p>
+            <p style="margin:0;font-size:14px;color:#166534;">${note}</p>
+        </div>`
+                : ''
+        }
+        <p style="margin:0 0 24px;font-size:15px;color:#374151;">
+            Our team will be in touch shortly with your account credentials so you can get started.
+        </p>
+        <p style="margin:0;font-size:13px;color:#9ca3af;">
+            If you have questions in the meantime, contact us at support@rogveda.com.
+        </p>
+    `
+            : `
+        <h2 style="margin:0 0 8px;font-size:20px;color:#111827;">Update on your application</h2>
+        <p style="margin:0 0 16px;font-size:15px;color:#374151;">
+            Thank you for your interest in joining Rogveda. After reviewing your application, we are
+            unable to move forward at this time.
+        </p>
+        ${
+            note
+                ? `
+        <div style="background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;padding:12px 16px;margin:0 0 24px;">
+            <p style="margin:0 0 4px;font-size:12px;font-weight:600;color:#991b1b;text-transform:uppercase;letter-spacing:0.5px;">Feedback from our team</p>
+            <p style="margin:0;font-size:14px;color:#991b1b;">${note}</p>
+        </div>`
+                : ''
+        }
+        <p style="margin:0;font-size:13px;color:#9ca3af;">
+            If you have questions, contact us at support@rogveda.com.
+        </p>
+    `
+    );
+
+    await send({
+        to: email,
+        subject,
+        html,
+        text: approved
+            ? `Your Rogveda vendor application has been approved! Our team will contact you shortly with next steps.\n\n${note ? 'Message from our team: ' + note : ''}`
+            : `Your Rogveda vendor application was not approved at this time.\n\n${note ? 'Feedback: ' + note : ''}\n\nIf you have questions, contact support@rogveda.com.`,
+    });
+};
+
 const sendDeactivationDecision = async ({ email, approved, reason }) => {
     const subject = approved
         ? 'Your deactivation request has been processed — Rogveda'
@@ -482,4 +543,5 @@ module.exports = {
     sendKycComplete,
     sendProfileDecision,
     sendDeactivationDecision,
+    sendLeadDecision,
 };
