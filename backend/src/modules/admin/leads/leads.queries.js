@@ -6,7 +6,13 @@ const getLeads = async ({ status, search, duplicates, page = 1, limit = 20 }) =>
     const offset = (page - 1) * limit;
 
     const conditions = [];
-    if (status) conditions.push(sql`vl.status = ${status}`);
+    if (status) {
+        // Explicit status filter — show only that status (including rejected)
+        conditions.push(sql`vl.status = ${status}`);
+    } else {
+        // No filter selected — hide rejected leads by default
+        conditions.push(sql`vl.status != 'rejected'`);
+    }
     if (duplicates) conditions.push(sql`vl.is_duplicate = TRUE`);
     if (search) {
         const pattern = `%${search}%`;
