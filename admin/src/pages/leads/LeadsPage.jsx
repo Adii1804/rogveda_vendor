@@ -82,6 +82,7 @@ export default function LeadsPage() {
                     <table className="w-full text-sm">
                         <thead className="border-b border-gray-200 bg-gray-50">
                             <tr>
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide w-16">#</th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Email</th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Status</th>
                                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">Duplicate</th>
@@ -91,13 +92,16 @@ export default function LeadsPage() {
                         <tbody className="divide-y divide-gray-100">
                             {leads.length === 0 ? (
                                 <tr>
-                                    <td colSpan={4} className="py-12 text-center text-sm text-gray-400">
+                                    <td colSpan={5} className="py-12 text-center text-sm text-gray-400">
                                         No leads found
                                     </td>
                                 </tr>
                             ) : (
                                 leads.map((lead) => (
                                     <tr key={lead.id} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-4 py-3 text-xs font-mono text-gray-400">
+                                            #{lead.ref_no}
+                                        </td>
                                         <td className="px-4 py-3">
                                             <Link
                                                 to={`/leads/${lead.id}`}

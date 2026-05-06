@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Input } from '@/components/ui/Input';
 import { PageLoader } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
-import { formatDateTime, shortId } from '@/lib/utils';
+import { formatDateTime } from '@/lib/utils';
 import { useState, useEffect, useMemo } from 'react';
 
 // 'new' is the automatic initial status when a lead arrives — admins never set it manually
@@ -154,6 +154,7 @@ function LeadDetailContent({ id }) {
 
             <div className="mb-6 flex items-start justify-between flex-wrap gap-3">
                 <div>
+                    <p className="text-xs font-medium text-gray-400 mb-0.5">Lead #{lead.ref_no}</p>
                     <h1 className="text-xl font-semibold text-gray-900">{lead.email}</h1>
                 </div>
                 <Badge status={lead.status} />
@@ -179,7 +180,7 @@ function LeadDetailContent({ id }) {
                                 label="Duplicate of"
                                 value={
                                     <span className="text-amber-600 font-medium text-xs">
-                                        Ref #{shortId(lead.duplicate_of)}
+                                        Lead #{lead.duplicate_ref_no}
                                     </span>
                                 }
                             />

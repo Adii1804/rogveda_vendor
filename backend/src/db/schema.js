@@ -95,6 +95,7 @@ const vendors = pgTable('vendors', {
 // ─── vendor_leads ─────────────────────────────────────────────────────────────
 const vendorLeads = pgTable('vendor_leads', {
     id: uuid('id').defaultRandom().primaryKey(),
+    refNo: serial('ref_no'),
     email: varchar('email', { length: 255 }).notNull(),
     emailVerified: boolean('email_verified').default(false),
     status: varchar('status', { length: 30 }).default('new'),

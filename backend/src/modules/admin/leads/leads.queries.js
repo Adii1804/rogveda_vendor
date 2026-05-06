@@ -29,7 +29,12 @@ const getLeads = async ({ status, search, page = 1, limit = 20 }) => {
 };
 
 const getLeadById = async (id) => {
-    const result = await db.execute(sql`SELECT * FROM vendor_leads WHERE id = ${id}`);
+    const result = await db.execute(
+        sql`SELECT vl.*, dup.ref_no AS duplicate_ref_no
+            FROM vendor_leads vl
+            LEFT JOIN vendor_leads dup ON dup.id = vl.duplicate_of
+            WHERE vl.id = ${id}`
+    );
     return result.rows[0] || null;
 };
 
