@@ -13,10 +13,29 @@ const MAX_FAILED_ATTEMPTS = 5;
 const LOCK_MINUTES = 30;
 
 const login = async (req, res) => {
-    const { identifier, password } = req.body;
+    const { identifier, password, recaptcha_token } = req.body;
 
     if (!identifier || !password) {
         return error(res, 'Login ID / email and password are required');
+    }
+
+    // Verify reCAPTCHA unless skipped in dev
+    if (!env.recaptcha.skip) {
+        if (!recaptcha_token) {
+            return error(res, 'Please complete the CAPTCHA', 400);
+        }
+        const verifyRes = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                secret: env.recaptcha.secretKey,
+                response: recaptcha_token,
+            }),
+        });
+        const verifyData = await verifyRes.json();
+        if (!verifyData.success) {
+            return error(res, 'CAPTCHA verification failed. Please try again.', 400);
+        }
     }
 
     const identifierClean = identifier.trim();

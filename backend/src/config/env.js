@@ -26,6 +26,11 @@ module.exports = {
         admin: process.env.ADMIN_PORTAL_URL || 'http://localhost:5173',
         public: process.env.PUBLIC_URL || 'http://localhost:5175',
     },
+    recaptcha: {
+        secretKey: process.env.RECAPTCHA_SECRET_KEY || '',
+        // Set to true to skip verification in local dev when key is not configured
+        skip: process.env.RECAPTCHA_SKIP === 'true' || !process.env.RECAPTCHA_SECRET_KEY,
+    },
     email: {
         host: process.env.SMTP_HOST || 'smtp.gmail.com',
         port: parseInt(process.env.SMTP_PORT) || 587,

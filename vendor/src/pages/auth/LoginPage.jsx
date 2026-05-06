@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
+import ReCAPTCHA from 'react-google-recaptcha';
 import { login } from '@/api/auth';
 import { requestLeadOtp, verifyLeadOtp } from '@/api/leads';
 import { useAuthStore } from '@/store/auth';
@@ -12,6 +13,8 @@ import { Input } from '@/components/ui/Input';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import { useToast } from '@/components/ui/Toast';
 import { cn } from '@/lib/utils';
+
+const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || '';
 
 // ─── Login schema ─────────────────────────────────────────────────────────────
 
@@ -246,6 +249,8 @@ export default function LoginPage() {
     const [mode, setMode] = useState('login'); // 'login' | 'join'
     const [loading, setLoading] = useState(false);
     const [locked, setLocked] = useState(false);
+    const [captchaToken, setCaptchaToken] = useState('');
+    const captchaRef = useRef(null);
 
     if (token && user?.password_reset_required) return <Navigate to="/reset-password" replace />;
     if (token && user && !user.password_reset_required) return <Navigate to="/dashboard" replace />;
@@ -257,10 +262,18 @@ export default function LoginPage() {
     } = useForm({ resolver: zodResolver(loginSchema) });
 
     const onSubmit = async (values) => {
+        if (RECAPTCHA_SITE_KEY && !captchaToken) {
+            toast('Please complete the CAPTCHA', 'error');
+            return;
+        }
         setLoading(true);
         setLocked(false);
         try {
-            const data = await login({ identifier: values.login_id, password: values.password });
+            const data = await login({
+                identifier: values.login_id,
+                password: values.password,
+                recaptcha_token: captchaToken,
+            });
             setAuth(data.token, data.user);
             const dest = data.user.password_reset_required === true
                 ? '/reset-password'
@@ -270,6 +283,9 @@ export default function LoginPage() {
             const msg = e.response?.data?.error || 'Login failed';
             if (e.response?.status === 403 && /locked/i.test(msg)) setLocked(true);
             toast(msg, 'error');
+            // Reset captcha on any error so user must re-verify
+            captchaRef.current?.reset();
+            setCaptchaToken('');
         } finally {
             setLoading(false);
         }
@@ -317,7 +333,22 @@ export default function LoginPage() {
                                         Contact Rogveda support to request an unlock link.
                                     </div>
                                 )}
-                                <Button type="submit" className="w-full" loading={loading}>
+                                {RECAPTCHA_SITE_KEY && (
+                                    <div className="flex justify-center">
+                                        <ReCAPTCHA
+                                            ref={captchaRef}
+                                            sitekey={RECAPTCHA_SITE_KEY}
+                                            onChange={(token) => setCaptchaToken(token || '')}
+                                            onExpired={() => setCaptchaToken('')}
+                                        />
+                                    </div>
+                                )}
+                                <Button
+                                    type="submit"
+                                    className="w-full"
+                                    loading={loading}
+                                    disabled={RECAPTCHA_SITE_KEY ? !captchaToken : false}
+                                >
                                     Sign in
                                 </Button>
                             </form>
