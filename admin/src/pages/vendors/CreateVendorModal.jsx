@@ -65,7 +65,7 @@ export function CreateVendorModal({ open, onClose }) {
     });
 
     const eligibleLeads = (leadsData?.leads || []).filter(
-        (l) => l.status !== 'rejected' && l.email_verified
+        (l) => l.status === 'approved' && l.email_verified
     );
 
     const {
