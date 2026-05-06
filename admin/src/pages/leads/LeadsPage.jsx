@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Select } from '@/components/ui/Select';
 import { PageLoader } from '@/components/ui/Spinner';
 import { PageHeader } from '@/components/layout/PageHeader';
-import { formatDate } from '@/lib/utils';
+import { formatDateTime } from '@/lib/utils';
 
 // Matches the DB CHECK constraint on vendor_leads.status
 const STATUSES = ['', 'new', 'contacted', 'under_review', 'approved', 'rejected'];
@@ -124,7 +124,7 @@ export default function LeadsPage() {
                                             </Link>
                                             {lead.callback_reminder_at && (
                                                 <p className="text-xs text-amber-600 mt-0.5">
-                                                    Callback: {formatDate(lead.callback_reminder_at)}
+                                                    Callback: {formatDateTime(lead.callback_reminder_at)}
                                                 </p>
                                             )}
                                         </td>
@@ -138,7 +138,7 @@ export default function LeadsPage() {
                                                 <span className="text-xs text-gray-400">—</span>
                                             )}
                                         </td>
-                                        <td className="px-4 py-3 text-gray-500">{formatDate(lead.created_at)}</td>
+                                        <td className="px-4 py-3 text-gray-500">{formatDateTime(lead.created_at)}</td>
                                     </tr>
                                 ))
                             )}

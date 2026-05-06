@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/Input';
 import { PageLoader } from '@/components/ui/Spinner';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { useToast } from '@/components/ui/Toast';
-import { formatDate } from '@/lib/utils';
+import { formatDateTime } from '@/lib/utils';
 
 function DocumentPreview({ doc }) {
     if (!doc.signed_url) {
@@ -236,7 +236,7 @@ export default function KycQueuePage() {
                                             <span className="text-xs text-gray-400">Optional</span>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3 text-gray-500">{formatDate(doc.uploaded_at || doc.updated_at)}</td>
+                                    <td className="px-4 py-3 text-gray-500">{formatDateTime(doc.uploaded_at || doc.updated_at)}</td>
                                     <td className="px-4 py-3">
                                         <Button
                                             size="sm"

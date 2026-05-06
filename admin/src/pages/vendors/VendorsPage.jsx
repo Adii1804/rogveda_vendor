@@ -9,7 +9,7 @@ import { Select } from '@/components/ui/Select';
 import { PageLoader } from '@/components/ui/Spinner';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { CreateVendorModal } from './CreateVendorModal';
-import { formatDate } from '@/lib/utils';
+import { formatDateTime } from '@/lib/utils';
 
 const KYC_STATUSES = ['', 'not_started', 'in_progress', 'under_review', 'complete'];
 const PAGE_SIZE = 20;
@@ -133,7 +133,7 @@ export default function VendorsPage() {
                                         <td className="px-4 py-3">
                                             <Badge status={v.profile_status} />
                                         </td>
-                                        <td className="px-4 py-3 text-gray-500">{formatDate(v.created_at)}</td>
+                                        <td className="px-4 py-3 text-gray-500">{formatDateTime(v.created_at)}</td>
                                     </tr>
                                 ))
                             )}
